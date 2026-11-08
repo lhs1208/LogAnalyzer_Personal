@@ -1,0 +1,1533 @@
+app:
+  description: 다양한 로그를 구조별로 분기 처리하고, 결과를 Java용 정규식·DateTimeFormatter·파서 코드와 logback/log4j2·Grok·nginx
+    포맷 표기로 함께 내보내는 전처리 모듈
+  icon: dna
+  icon_background: '#E7E4FF'
+  icon_type: emoji
+  mode: workflow
+  name: Log Field Extractor
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c
+    version: null
+kind: app
+site:
+  chat_color_theme: null
+  chat_color_theme_inverted: false
+  copyright: null
+  custom_disclaimer: ''
+  default_language: ko-KR
+  description: null
+  icon: dna
+  icon_background: '#E7E4FF'
+  icon_type: emoji
+  input_placeholder: null
+  privacy_policy: null
+  show_workflow_steps: true
+  title: Log Field Extractor
+  use_icon_as_answer_icon: false
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 50
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        knowledge_file_size_limit: 50
+        single_chunk_attachment_limit: 10
+        skill_file_size_limit: 50
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: x1-2
+      source: '1722960000001'
+      sourceHandle: source
+      target: '1722960000002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: x2-3
+      source: '1722960000002'
+      sourceHandle: source
+      target: '1722960000003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: x3-4
+      source: '1722960000003'
+      sourceHandle: source
+      target: '1722960000004'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: x4-6
+      source: '1722960000004'
+      sourceHandle: source
+      target: '1722960000006'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: x6-5
+      source: '1722960000006'
+      sourceHandle: source
+      target: '1722960000005'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 로그 샘플을 붙여넣습니다. 여러 종류가 섞여 있어도 됩니다
+        selected: false
+        title: 시작
+        type: start
+        variables:
+        - label: 로그 샘플 (여러 줄, 혼합 가능)
+          max_length: 20000
+          options: []
+          required: true
+          type: paragraph
+          variable: log_sample
+      height: 153
+      id: '1722960000001'
+      position:
+        x: 80
+        y: 300
+      positionAbsolute:
+        x: 80
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        code: "import re\nimport json\n\n# ================= 사전 정의 =================\n\
+          TS_PATTERNS = [\n    (\"iso8601\", r\"\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\\
+          d{2}:\\d{2}(?:[.,]\\d{1,9})?(?:Z|[+-]\\d{2}:?\\d{2})?\", \"%Y-%m-%dT%H:%M:%S\"\
+          ),\n    (\"clf\", r\"\\d{2}/[A-Za-z]{3}/\\d{4}:\\d{2}:\\d{2}:\\d{2}\\s[+-]\\\
+          d{4}\", \"%d/%b/%Y:%H:%M:%S %z\"),\n    (\"dmy_dash\", r\"\\d{2}-[A-Za-z]{3}-\\\
+          d{4}\\s\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{1,6})?\", \"%d-%b-%Y %H:%M:%S\"),\n\
+          \    (\"slash_ymd\", r\"\\d{4}/\\d{2}/\\d{2}\\s\\d{2}:\\d{2}:\\d{2}(?:[.,]\\\
+          d{1,3})?\", \"%Y/%m/%d %H:%M:%S\"),\n    (\"dot_ymd\", r\"\\d{4}\\.\\d{2}\\\
+          .\\d{2}\\s\\d{2}:\\d{2}:\\d{2}\", \"%Y.%m.%d %H:%M:%S\"),\n    (\"us_mdy\"\
+          , r\"\\d{1,2}/\\d{1,2}/\\d{4}\\s\\d{1,2}:\\d{2}:\\d{2}(?:\\s?[AP]M)?\",\
+          \ \"%m/%d/%Y %I:%M:%S %p\"),\n    (\"compact\", r\"\\d{8}[ T\\-_]\\d{6}\"\
+          , \"%Y%m%d %H%M%S\"),\n    (\"syslog_bsd\", r\"[A-Z][a-z]{2}\\s{1,2}\\d{1,2}\\\
+          s\\d{2}:\\d{2}:\\d{2}\", \"%b %d %H:%M:%S\"),\n    (\"time_only\", r\"(?<!\\\
+          d)\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{1,6})?(?!\\d)\", \"%H:%M:%S\"),\n    (\"\
+          epoch_ms\", r\"(?<!\\d)1\\d{12}(?!\\d)\", \"epoch_milliseconds\"),\n   \
+          \ (\"epoch_s\", r\"(?<!\\d)1\\d{9}(?!\\d)\", \"epoch_seconds\"),\n]\n\n\
+          LEVELS = [\"TRACE\", \"DEBUG\", \"INFO\", \"INF\", \"NOTICE\", \"WARNING\"\
+          , \"WARN\",\n          \"ERROR\", \"ERR\", \"CRITICAL\", \"CRIT\", \"FATAL\"\
+          , \"ALERT\", \"EMERG\",\n          \"SEVERE\", \"PANIC\", \"VERBOSE\"]\n\
+          LEVEL_SET = set(LEVELS)\nLEVEL_ALT = \"|\".join(LEVELS)\n\nTS_KEYS = {\"\
+          time\", \"timestamp\", \"ts\", \"@timestamp\", \"date\", \"datetime\",\n\
+          \           \"eventtime\", \"event_time\", \"asctime\", \"logtime\", \"\
+          created\"}\nLEVEL_KEYS = {\"level\", \"severity\", \"lvl\", \"loglevel\"\
+          , \"log_level\",\n              \"levelname\", \"priority\", \"sev\"}\n\
+          MSG_KEYS = {\"message\", \"msg\", \"text\", \"event\", \"body\", \"content\"\
+          , \"log\"}\n\nNOISE_RULES = [\n    (\"separator\", r\"^[\\s\\-=_*#~+.]{5,}$\"\
+          ),\n    (\"blank_ish\", r\"^\\W{0,3}$\"),\n    (\"stack_frame\", r\"^\\\
+          s*(at\\s+\\S+\\(.*\\)|Caused by:|Suppressed:|\\.{3}\\s*\\d+\\s+more)\"),\n\
+          \    (\"gc_log\", r\"(^\\[?\\s*(Full\\s+)?GC\\b|\\bAllocation Failure\\\
+          b|\\bPSYoungGen\\b)\"),\n    (\"jvm_banner\", r\"^(OpenJDK|Java HotSpot|Picked\
+          \ up JAVA)\"),\n    (\"ascii_art\", r\"^\\s*[|/\\\\_:.=]{2,}\"),\n    (\"\
+          indented_continuation\", r\"^\\s{2,}\\S\"),\n    (\"sql_fragment\", r\"\
+          ^\\s*(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN)\\b\"),\n]\nNOISE_COMPILED\
+          \ = [(n, re.compile(p, re.I)) for n, p in NOISE_RULES]\n\nTOKEN_RE = re.compile(r'\\\
+          [[^\\]]*\\]|\"[^\"]*\"|\\([^)]*\\)|\\{[^}]*\\}|\\S+')\nKV_RE = re.compile(r'([A-Za-z_][\\\
+          w.\\-]*)=(\"[^\"]*\"|\\'[^\\']*\\'|[^\\s,;]+)')\nIP_RE = re.compile(r\"\
+          ^\\d{1,3}(?:\\.\\d{1,3}){3}$\")\nUUID_RE = re.compile(r\"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$\"\
+          )\nHEXID_RE = re.compile(r\"^[0-9a-fA-F]{16,}$\")\nNUM_RE = re.compile(r\"\
+          ^\\d+$\")\nFLOAT_RE = re.compile(r\"^-?\\d+\\.\\d+$\")\nDUR_RE = re.compile(r\"\
+          ^\\d+(?:\\.\\d+)?(ms|s|us|ns|m)$\")\nURL_RE = re.compile(r\"^https?://\\\
+          S+$\")\nPATH_RE = re.compile(r\"^/\\S*$\")\nMETHOD_RE = re.compile(r\"^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE|CONNECT)$\"\
+          )\nHTTPVER_RE = re.compile(r\"^HTTP/\\d\\.\\d$\")\n# Java 로거 이름 (예: org.apache.catalina.core.StandardContext,\
+          \ ...reload)\nLOGGER_RE = re.compile(r\"^[A-Za-z_][\\w$]*(?:\\.[A-Za-z_][\\\
+          w$]*){2,}$\")\n\nSENTINEL = \"\\x00TS\\x00\"\nHARD_LINE_CAP = 20000\nMAX_EVENTS\
+          \ = 3000\nMAX_GROUPS = 8\nMAX_VARIANTS = 8\nWINDOW = 12\nMAX_JSON_KEYS =\
+          \ 80\nMAX_JSON_DEPTH = 4\nOPTIONAL_SAFE = {\"BR\", \"QT\", \"PR\", \"LV\"\
+          , \"IP\", \"NM\", \"TS\"}\nJACCARD_MIN = 0.3\n\n\n# ================= 공통\
+          \ =================\ndef pick_ts(lines):\n    best = None\n    for name,\
+          \ pat, fmt in TS_PATTERNS:\n        rx = re.compile(pat)\n        hits =\
+          \ sum(1 for l in lines if rx.search(l))\n        if hits == 0:\n       \
+          \     continue\n        c = {\"name\": name, \"regex\": pat, \"strptime\"\
+          : fmt,\n             \"coverage\": round(hits / len(lines), 4)}\n      \
+          \  if best is None or c[\"coverage\"] > best[\"coverage\"]:\n          \
+          \  best = c\n    return best\n\n\n# 진짜 연속 라인의 표지. 타임스탬프가 없다는 이유만으로 병합하면\n\
+          # 다른 포맷의 이벤트(JSON 로그 등)까지 앞 줄에 삼켜버린다.\nCONT_RE = re.compile(r\"^(?:\\s+\\\
+          S|at\\s+\\S+\\(|Caused by:|Suppressed:|\\.{3}\\s*\\d+\\s+more)\")\n\n\n\
+          def merge_multiline(lines, ts):\n    if not ts:\n        return lines, 0\n\
+          \    anchor = re.compile(r\"^\\s*(?:<\\d{1,3}>)?\" + ts[\"regex\"])\n  \
+          \  if sum(1 for l in lines if anchor.match(l)) < 0.5 * len(lines):\n   \
+          \     return lines, 0\n    events, merged = [], 0\n    for l in lines:\n\
+          \        cont = (events and not anchor.match(l)\n                and CONT_RE.match(l)\n\
+          \                and structure_of(l) == \"plain\")\n        if cont:\n \
+          \           events[-1] += \"\\n\" + l\n            merged += 1\n       \
+          \ else:\n            events.append(l)\n    return events, merged\n\n\ndef\
+          \ stratify(events, cap):\n    \"\"\"앞부분 편향을 피해 전 구간에서 균등 추출\"\"\"\n    if\
+          \ len(events) <= cap:\n        return events, False\n    step = len(events)\
+          \ / float(cap)\n    return [events[int(i * step)] for i in range(cap)],\
+          \ True\n\n\ndef unquote(v):\n    v = v.strip()\n    if len(v) >= 2 and v[0]\
+          \ == v[-1] and v[0] in \"\\\"'\":\n        return v[1:-1]\n    return v\n\
+          \n\ndef strip_wrap(v):\n    if len(v) >= 2 and v[0] in \"[({\\\"\" and v[-1]\
+          \ in \"])}\\\"\":\n        return v[1:-1]\n    return v\n\n\ndef leaf(key):\n\
+          \    return (key or \"\").split(\".\")[-1].lower().lstrip(\"@\")\n\n\ndef\
+          \ infer_role(values, key, ts_regex):\n    vals = [str(v) for v in values\
+          \ if str(v).strip() != \"\"][:20]\n    if not vals:\n        return \"unknown\"\
+          , \"string\"\n    k = leaf(key)\n    if k in TS_KEYS:\n        return \"\
+          timestamp\", \"datetime\"\n    if k in LEVEL_KEYS:\n        return \"level\"\
+          , \"string\"\n    if k in MSG_KEYS:\n        return \"message\", \"string\"\
+          \n\n    def every(rx):\n        return all(rx.match(v) for v in vals)\n\n\
+          \    if ts_regex and all(re.fullmatch(ts_regex, v) for v in vals):\n   \
+          \     return \"timestamp\", \"datetime\"\n    if all(v.upper().strip(\"\
+          []:\") in LEVEL_SET for v in vals):\n        return \"level\", \"string\"\
+          \n    if every(METHOD_RE):\n        return \"http_method\", \"string\"\n\
+          \    if every(HTTPVER_RE):\n        return \"http_version\", \"string\"\n\
+          \    if every(IP_RE):\n        return \"client_ip\", \"ip\"\n    if every(UUID_RE):\n\
+          \        return \"trace_id\", \"string\"\n    if every(HEXID_RE):\n    \
+          \    return \"hex_id\", \"string\"\n    if every(URL_RE):\n        return\
+          \ \"url\", \"string\"\n    if every(PATH_RE):\n        return \"path\",\
+          \ \"string\"\n    if every(DUR_RE):\n        return \"duration\", \"duration\"\
+          \n    if every(NUM_RE):\n        nums = [int(v) for v in vals]\n       \
+          \ if len(vals[0]) == 3 and all(100 <= x <= 599 for x in nums) \\\n     \
+          \           and len(set(len(v) for v in vals)) == 1:\n            return\
+          \ \"http_status\", \"int\"\n        if k in (\"port\", \"sport\", \"dport\"\
+          ) and all(0 < x < 65536 for x in nums):\n            return \"port\", \"\
+          int\"\n        return \"number\", \"int\"\n    if every(FLOAT_RE):\n   \
+          \     return \"number\", \"float\"\n    if every(LOGGER_RE):\n        return\
+          \ \"logger\", \"string\"\n    return \"unknown\", \"string\"\n\n\ndef classify(tok):\n\
+          \    if tok == SENTINEL:\n        return \"TS\"\n    bare = tok.strip(\"\
+          []:\")\n    # 대문자 전체거나 소문자 전체인 경우만 레벨로 본다. \"Error\", \"Warning\" 처럼\n \
+          \   # 평범한 문장에 나오는 Title-case 단어와 혼동되는 것을 막기 위함이다\n    # (실제 로그레벨 표기는 거의\
+          \ 항상 전부 대문자거나 전부 소문자다).\n    if bare and (bare.isupper() or bare.islower())\
+          \ and bare.upper() in LEVEL_SET:\n        return \"LV\"\n    if tok.startswith(\"\
+          [\") and tok.endswith(\"]\"):\n        return \"BR\"\n    if tok.startswith('\"\
+          ') and tok.endswith('\"'):\n        return \"QT\"\n    if tok.startswith(\"\
+          (\") and tok.endswith(\")\"):\n        return \"PR\"\n    if IP_RE.match(tok):\n\
+          \        return \"IP\"\n    if NUM_RE.match(tok):\n        return \"NM\"\
+          \n    return \"WD\"\n\n\ndef tokenize(event, ts_regex):\n    first = event.split(\"\
+          \\n\")[0]\n    work, ts_val = first, None\n    if ts_regex:\n        m =\
+          \ re.search(ts_regex, first)\n        if m:\n            ts_val = m.group(0)\n\
+          \            work = first[:m.start()] + SENTINEL + first[m.end():]\n   \
+          \ toks = TOKEN_RE.findall(work)\n    return toks, [classify(t) for t in\
+          \ toks], ts_val\n\n\ndef noise_kind(event):\n    first = event.split(\"\\\
+          n\")[0]\n    for name, rx in NOISE_COMPILED:\n        if rx.search(first):\n\
+          \            return name\n    return None\n\n\ndef good_turing(counter,\
+          \ n):\n    \"\"\"1회만 관측된 변형 비율 = 다음 관측이 미관측 변형일 확률의 추정치\"\"\"\n    if not\
+          \ n:\n        return 0.0\n    singles = sum(1 for v in counter.values()\
+          \ if v == 1)\n    return round(min(singles / float(n), 1.0), 4)\n\n\n# =================\
+          \ 구조 판별 =================\ndef structure_of(line):\n    s = line.strip()\n\
+          \    if s.startswith(\"{\") and s.endswith(\"}\"):\n        try:\n     \
+          \       if isinstance(json.loads(s), dict):\n                return \"json\"\
+          \n        except Exception:\n            pass\n    # 구조 판별은 이벤트의 첫 줄만 본다.\
+          \ 멀티라인 병합 후 전체 텍스트를 보면\n    # 스택트레이스 들여쓰기(tab 등)가 누적되어 delimited 로 오판된다.\n\
+          \    first = s.split(\"\\n\", 1)[0]\n    if re.match(r\"^<\\d{1,3}>1\\s\"\
+          , first):\n        return \"syslog5424\"\n    if len(KV_RE.findall(first))\
+          \ >= 3 and len(first.split(\"=\")[0].split()) <= 3:\n        return \"logfmt\"\
+          \n    for d in [\"\\t\", \"|\", \";\"]:\n        if first.count(d) >= 3:\n\
+          \            return \"delimited:\" + d\n    if first.count(\",\") >= 3 and\
+          \ '\"' not in first and \" - \" not in first:\n        return \"delimited:,\"\
+          \n    return \"plain\"\n\n\n# ================= JSON / logfmt / delimited\
+          \ / syslog =================\ndef flatten(obj, prefix=\"\", out=None, depth=0):\n\
+          \    if out is None:\n        out = {}\n    for k, v in obj.items():\n \
+          \       if len(out) >= MAX_JSON_KEYS:\n            return out\n        key\
+          \ = prefix + str(k)\n        if isinstance(v, dict) and depth < MAX_JSON_DEPTH:\n\
+          \            flatten(v, key + \".\", out, depth + 1)\n        elif isinstance(v,\
+          \ dict):\n            out[key] = json.dumps(v, ensure_ascii=False)[:200]\n\
+          \        elif isinstance(v, list):\n            if v and all(not isinstance(x,\
+          \ (dict, list)) for x in v):\n                out[key] = \",\".join(str(x)\
+          \ for x in v)[:200]\n            else:\n                out[key + \"[]\"\
+          ] = json.dumps(v, ensure_ascii=False)[:200]\n        else:\n           \
+          \ out[key] = v\n    return out\n\n\ndef extract_json(events, ts_regex):\n\
+          \    objs, truncated, keysig = [], False, {}\n    for e in events:\n   \
+          \     try:\n            o = json.loads(e.strip())\n            if isinstance(o,\
+          \ dict):\n                fl = flatten(o)\n                if len(fl) >=\
+          \ MAX_JSON_KEYS:\n                    truncated = True\n               \
+          \ objs.append(fl)\n                sk = tuple(sorted(fl.keys()))\n     \
+          \           keysig[sk] = keysig.get(sk, 0) + 1\n        except Exception:\n\
+          \            pass\n    keys = []\n    for o in objs:\n        for k in o.keys():\n\
+          \            if k not in keys:\n                keys.append(k)\n    fields\
+          \ = []\n    for i, k in enumerate(keys, 1):\n        vals = [o[k] for o\
+          \ in objs if k in o]\n        role, typ = infer_role(vals, k, ts_regex)\n\
+          \        fields.append({\"index\": i, \"source\": k, \"json_path\": k,\n\
+          \                       \"name\": k.replace(\".\", \"_\").replace(\"[]\"\
+          , \"_arr\"),\n                       \"role\": role, \"type\": typ,\n  \
+          \                     \"nullable\": len(vals) < len(objs),\n           \
+          \            \"nested\": \".\" in k,\n                       \"examples\"\
+          : [str(v)[:80] for v in vals[:2]]})\n    spec = {\"parser\": \"json\", \"\
+          regex\": None, \"variants\": [], \"fields\": fields,\n            \"flatten\"\
+          : {\"separator\": \".\", \"max_depth\": MAX_JSON_DEPTH},\n            \"\
+          unseen_variant_rate\": good_turing(keysig, len(objs)),\n            \"selector\"\
+          : {\"kind\": \"json_object\"}}\n    if truncated:\n        spec[\"note\"\
+          ] = \"키가 %d개를 넘어 일부만 반영했습니다\" % MAX_JSON_KEYS\n    return spec\n\n\ndef\
+          \ extract_logfmt(events, ts_regex):\n    keys, bag, keysig = [], {}, {}\n\
+          \    for e in events:\n        pairs = KV_RE.findall(e)\n        keysig[tuple(sorted(k\
+          \ for k, _ in pairs))] = \\\n            keysig.get(tuple(sorted(k for k,\
+          \ _ in pairs)), 0) + 1\n        for k, v in pairs:\n            if k not\
+          \ in keys:\n                keys.append(k)\n            bag.setdefault(k,\
+          \ []).append(unquote(v))\n    fields = []\n    for i, k in enumerate(keys,\
+          \ 1):\n        role, typ = infer_role(bag[k], k, ts_regex)\n        fields.append({\"\
+          index\": i, \"source\": k, \"name\": k, \"role\": role,\n              \
+          \         \"type\": typ, \"nullable\": len(bag[k]) < len(events),\n    \
+          \                   \"examples\": bag[k][:2]})\n    return {\"parser\":\
+          \ \"logfmt\", \"regex\": None, \"variants\": [], \"fields\": fields,\n \
+          \           \"unseen_variant_rate\": good_turing(keysig, len(events)),\n\
+          \            \"selector\": {\"kind\": \"kv_pairs\", \"min_pairs\": 3}}\n\
+          \n\ndef extract_delimited(events, delim, ts_regex):\n    rows = [e.split(delim)\
+          \ for e in events]\n    ncol = max(len(r) for r in rows)\n    header = None\n\
+          \    if len(rows) >= 3:\n        h = [c.strip() for c in rows[0]]\n    \
+          \    rest_num = any(NUM_RE.match(c.strip()) for r in rows[1:] for c in r)\n\
+          \        if len(set(h)) == len(h) and not any(NUM_RE.match(c) for c in h)\
+          \ and rest_num:\n            header, rows = h, rows[1:]\n    colsig = {}\n\
+          \    for r in rows:\n        colsig[len(r)] = colsig.get(len(r), 0) + 1\n\
+          \    fields = []\n    for i in range(ncol):\n        vals = [r[i].strip()\
+          \ for r in rows if len(r) > i]\n        hk = header[i] if header and i <\
+          \ len(header) else None\n        role, typ = infer_role(vals, hk, ts_regex)\n\
+          \        nm = (re.sub(r\"[^0-9a-zA-Z_]\", \"_\", hk.lower()) if hk\n   \
+          \           else (role if role not in (\"unknown\", \"number\") else \"\
+          col_%d\" % (i + 1)))\n        fields.append({\"index\": i + 1, \"source\"\
+          : \"col_%d\" % (i + 1),\n                       \"name\": nm or \"col_%d\"\
+          \ % (i + 1), \"role\": role,\n                       \"type\": typ, \"nullable\"\
+          : False, \"examples\": vals[:2]})\n    return {\"parser\": \"delimited\"\
+          , \"delimiter\": delim, \"regex\": None,\n            \"variants\": [],\
+          \ \"has_header\": header is not None, \"fields\": fields,\n            \"\
+          unseen_variant_rate\": good_turing(colsig, len(rows)),\n            \"selector\"\
+          : {\"kind\": \"delimiter_count\", \"delimiter\": delim,\n              \
+          \           \"min_count\": ncol - 1}}\n\n\ndef extract_syslog5424(events,\
+          \ ts_regex):\n    rx = (r\"^<(?P<pri>\\d{1,3})>(?P<version>\\d)\\s(?P<timestamp>\\\
+          S+)\\s(?P<hostname>\\S+)\\s\"\n          r\"(?P<app_name>\\S+)\\s(?P<procid>\\\
+          S+)\\s(?P<msgid>\\S+)\\s\"\n          r\"(?P<structured_data>-|\\[.*?\\\
+          ])\\s?(?P<message>.*)$\")\n    names = [\"pri\", \"version\", \"timestamp\"\
+          , \"hostname\", \"app_name\",\n             \"procid\", \"msgid\", \"structured_data\"\
+          , \"message\"]\n    roles = {\"timestamp\": \"timestamp\", \"message\":\
+          \ \"message\",\n             \"hostname\": \"host\", \"app_name\": \"service\"\
+          }\n    cx = re.compile(rx, re.S)\n    fields = []\n    for i, n in enumerate(names,\
+          \ 1):\n        ex = [m.group(n)[:80] for m in (cx.match(e) for e in events[:3])\
+          \ if m]\n        fields.append({\"index\": i, \"source\": n, \"name\": n,\n\
+          \                       \"role\": roles.get(n, \"unknown\"), \"type\": \"\
+          string\",\n                       \"nullable\": False, \"examples\": ex})\n\
+          \    return {\"parser\": \"regex\", \"regex\": rx, \"variants\": [], \"\
+          fields\": fields,\n            \"unseen_variant_rate\": 0.0,\n         \
+          \   \"selector\": {\"kind\": \"regex\", \"pattern\": r\"^<\\d{1,3}>1\\s\"\
+          }}\n\n\n# ============ plain 공통 ============\ndef wd_pattern(vals):\n  \
+          \  vals = [v for v in vals if v]\n    if not vals:\n        return r\"\\\
+          S+\"\n    uniq = sorted(set(vals))\n    # 열거형은 근거가 충분할 때만 — 값마다 평균 3회 이상\
+          \ 관측되어야 한다.\n    # (표본이 적으면 메시지 단어가 우연히 고정값처럼 보인다)\n    if len(uniq) <=\
+          \ 8 and len(vals) >= 3 * len(uniq) \\\n            and all(re.match(r\"\
+          ^[\\w.\\-/:]+$\", v) for v in uniq):\n        return \"(?:\" + \"|\".join(re.escape(v)\
+          \ for v in uniq) + \")\"\n    for pat in [r\"[\\w.]+\", r\"[\\w.\\-]+\"\
+          , r\"[\\w.\\-/]+\", r\"[^\\s:]+:\", r\"[\\w.\\-/:@]+\"]:\n        if all(re.fullmatch(pat,\
+          \ v) for v in vals):\n            return pat\n    return r\"\\S+\"\n\n\n\
+          def build_piece(cls, name, ts_regex, vals=None):\n    if cls == \"TS\":\n\
+          \        return \"(?P<%s>%s)\" % (name, ts_regex)\n    if cls == \"LV\"\
+          :\n        return r\"\\[?(?P<%s>%s)\\]?:?\" % (name, LEVEL_ALT)\n    if\
+          \ cls == \"BR\":\n        return r\"\\[(?P<%s>[^\\]]*)\\]\" % name\n   \
+          \ if cls == \"QT\":\n        return r'\"(?P<%s>[^\"]*)\"' % name\n    if\
+          \ cls == \"PR\":\n        return r\"\\((?P<%s>[^)]*)\\)\" % name\n    if\
+          \ cls == \"IP\":\n        return r\"(?P<%s>\\d{1,3}(?:\\.\\d{1,3}){3})\"\
+          \ % name\n    if cls == \"NM\":\n        return r\"(?P<%s>\\d+)\" % name\n\
+          \    return r\"(?P<%s>%s)\" % (name, wd_pattern(vals or []))\n\n\ndef cover(ev_classes,\
+          \ ref, strict=True):\n    i, used = 0, []\n    for j, c in enumerate(ref):\n\
+          \        if i < len(ev_classes) and ev_classes[i] == c:\n            used.append(j)\n\
+          \            i += 1\n        elif strict and c not in OPTIONAL_SAFE:\n \
+          \           return None\n    return used, i\n\n\ndef token_value(tok, ts_val):\n\
+          \    \"\"\"센티넬이 들어 있으면 원래 타임스탬프로 되돌린다.\n       CLF 처럼 [06/Aug/2026:12:00:00\
+          \ +0900] 로 감싸인 경우를 위해.\"\"\"\n    if ts_val and SENTINEL in tok:\n     \
+          \   return strip_wrap(tok.replace(SENTINEL, ts_val))\n    return strip_wrap(tok)\n\
+          \n\ndef name_fields(ref, per_pos_vals, covered_n, ts_regex, msg_ex):\n \
+          \   fields, names, taken = [], {}, set()\n    for j, cls in enumerate(ref):\n\
+          \        vals = per_pos_vals.get(j, [])\n        optional = len(vals) <\
+          \ covered_n\n        role, typ = infer_role(vals, None, ts_regex)\n    \
+          \    if cls == \"TS\":\n            role, typ = \"timestamp\", \"datetime\"\
+          \n        if cls == \"LV\":\n            role, typ = \"level\", \"string\"\
+          \n        # 대괄호로 감싸인 토큰([main], [Catalina-utility-1] 등)은 log4j/logback\n\
+          \        # 관례상 스레드 이름인 경우가 대부분이다. 다른 역할로 이미 분류됐다면\n        # (IP 등) 건드리지\
+          \ 않는다.\n        if cls == \"BR\" and role == \"unknown\":\n            role,\
+          \ typ = \"thread\", \"string\"\n        nm = role if role not in (\"unknown\"\
+          , \"number\") else \"f%d\" % (j + 1)\n        if nm in taken:\n        \
+          \    nm = \"f%d\" % (j + 1)\n        taken.add(nm)\n        names[j] = nm\n\
+          \        fields.append({\"index\": j + 1, \"source\": \"pos_%d\" % (j +\
+          \ 1),\n                       \"name\": nm, \"role\": role, \"type\": typ,\n\
+          \                       \"nullable\": optional, \"examples\": vals[:2]})\n\
+          \    fields.append({\"index\": len(ref) + 1, \"source\": \"rest\", \"name\"\
+          : \"message\",\n                   \"role\": \"message\", \"type\": \"string\"\
+          , \"nullable\": False,\n                   \"examples\": msg_ex})\n    return\
+          \ fields, names\n\n\n# ---------- 모드 A: 순서 있는 정렬 ----------\ndef plain_sequence(shaped,\
+          \ ts_regex):\n    n = len(shaped)\n    cand_count = {}\n    for toks, cls,\
+          \ _ in shaped:\n        for k in range(1, min(len(cls), WINDOW) + 1):\n\
+          \            key = tuple(cls[:k])\n            cand_count[key] = cand_count.get(key,\
+          \ 0) + 1\n    cands = sorted(cand_count.keys(), key=lambda t: (-cand_count[t],\
+          \ -len(t)))[:40]\n\n    best_ref, best_score, best_full = (), (-1, -1),\
+          \ 0\n    for ref in cands:\n        covered = full = 0\n        for _, cls,\
+          \ _ in shaped:\n            used, consumed = cover(cls, ref, strict=False)\n\
+          \            if consumed == 0 or len(used) < 0.5 * len(ref):\n         \
+          \       continue\n            covered += 1\n            if len(used) ==\
+          \ len(ref):\n                full += 1\n        if covered < 0.8 * n or\
+          \ full < 0.25 * n:\n            continue\n        if (covered, len(ref))\
+          \ > best_score:\n            best_ref, best_score, best_full = ref, (covered,\
+          \ len(ref)), full\n    if not best_ref:\n        return None\n\n    def\
+          \ collect(ref):\n        ppv, sc, mex, cn = {}, {}, [], 0\n        for toks,\
+          \ cls, ts_val in shaped:\n            used, consumed = cover(cls, ref, strict=False)\n\
+          \            if consumed == 0 or (ref and len(used) < 0.5 * len(ref)):\n\
+          \                continue\n            cn += 1\n            sc[tuple(used)]\
+          \ = sc.get(tuple(used), 0) + 1\n            for slot, j in enumerate(used):\n\
+          \                v = token_value(toks[slot], ts_val)\n                ppv.setdefault(j,\
+          \ []).append(v)\n            if len(mex) < 2 and len(toks) > consumed:\n\
+          \                mex.append(\" \".join(toks[consumed:])[:100])\n       \
+          \ return ppv, sc, mex, cn\n\n    per_pos_vals, shape_count, msg_ex, covered_n\
+          \ = collect(best_ref)\n\n    # --- 메시지 경계 보정 ---\n    # (1) 고정 구분자: 값이 1종이고\
+          \ 비단어 문자면 필드가 아니라 구분자다.\n    #     logback 의 \" - \" 처럼 여기서부터 뒤는 전부 메시지.\n\
+          \    separator = None\n    for j in range(len(best_ref)):\n        vals\
+          \ = per_pos_vals.get(j, [])\n        if best_ref[j] == \"WD\" and vals and\
+          \ len(set(vals)) == 1 \\\n                and re.fullmatch(r\"[^\\w\\s]{1,2}\"\
+          , vals[0]):\n            separator = vals[0]\n            best_ref = best_ref[:j]\n\
+          \            per_pos_vals, shape_count, msg_ex, covered_n = collect(best_ref)\n\
+          \            break\n\n    # (2) 끝자락 고엔트로피 WD 는 메시지 첫 단어일 가능성이 높으므로 잘라낸다\n\
+          \    while len(best_ref) > 1:\n        j = len(best_ref) - 1\n        vals\
+          \ = per_pos_vals.get(j, [])\n        if best_ref[j] == \"WD\" and vals and\
+          \ \\\n                len(set(vals)) / float(len(vals)) > 0.4:\n       \
+          \     best_ref = best_ref[:j]\n            per_pos_vals, shape_count, msg_ex,\
+          \ covered_n = collect(best_ref)\n        else:\n            break\n\n  \
+          \  if not best_ref or not covered_n:\n        return None\n\n    if separator:\n\
+          \        msg_ex = [re.sub(r\"^\\s*\" + re.escape(separator) + r\"\\s*\"\
+          , \"\", m)\n                  for m in msg_ex]\n\n    fields, names = name_fields(best_ref,\
+          \ per_pos_vals, covered_n, ts_regex, msg_ex)\n    sep_part = (r\"\\s+\"\
+          \ + re.escape(separator)) if separator else \"\"\n\n    def regex_for(pos_list):\n\
+          \        parts = []\n        for idx, j in enumerate(pos_list):\n      \
+          \      p = build_piece(best_ref[j], names[j], ts_regex, per_pos_vals.get(j,\
+          \ []))\n            parts.append(p if idx == 0 else r\"\\s+\" + p)\n   \
+          \     return \"^\" + \"\".join(parts) + sep_part + r\"\\s*(?P<message>.*)$\"\
+          \n\n    variants = []\n    for pos, cnt in sorted(shape_count.items(), key=lambda\
+          \ kv: (-len(kv[0]), -kv[1]))[:MAX_VARIANTS]:\n        if not pos:\n    \
+          \        continue\n        rx = regex_for(list(pos))\n        try:\n   \
+          \         re.compile(rx, re.S)\n        except re.error:\n            continue\n\
+          \        variants.append({\"variant_id\": len(variants) + 1, \"regex\":\
+          \ rx,\n                         \"kind\": \"presence\",\n              \
+          \           \"share\": round(cnt / covered_n, 4),\n                    \
+          \     \"absent_fields\": [names[j] for j in range(len(best_ref))\n     \
+          \                                      if j not in set(pos)]})\n\n    opt_idx\
+          \ = [j for j in range(len(best_ref))\n               if len(per_pos_vals.get(j,\
+          \ [])) < covered_n]\n    unified = None\n    if not opt_idx:\n        unified\
+          \ = regex_for(list(range(len(best_ref))))\n    elif all(best_ref[j] in OPTIONAL_SAFE\n\
+          \             or wd_pattern(per_pos_vals.get(j, [])) != r\"\\S+\" for j\
+          \ in opt_idx):\n        parts = []\n        for idx, j in enumerate(range(len(best_ref))):\n\
+          \            p = build_piece(best_ref[j], names[j], ts_regex, per_pos_vals.get(j,\
+          \ []))\n            opt = j in opt_idx\n            if idx == 0:\n     \
+          \           parts.append(\"(?:%s\\\\s+)?\" % p if opt else p)\n        \
+          \    else:\n                parts.append(\"(?:\\\\s+%s)?\" % p if opt else\
+          \ r\"\\s+\" + p)\n        cand = \"^\" + \"\".join(parts) + sep_part + r\"\
+          \\s*(?P<message>.*)$\"\n        try:\n            re.compile(cand, re.S)\n\
+          \            unified = cand\n        except re.error:\n            unified\
+          \ = None\n\n    return {\"mode\": \"sequence\", \"fields\": fields, \"variants\"\
+          : variants,\n            \"unified_regex\": unified, \"optional_field_count\"\
+          : len(opt_idx),\n            \"unseen_variant_rate\": good_turing(shape_count,\
+          \ covered_n),\n            \"full_ratio\": round(best_full / float(n), 4)}\n\
+          \n\n# ---------- 모드 B: 순열 정렬 ----------\ndef plain_permutation(shaped, ts_regex):\n\
+          \    n = len(shaped)\n    cand = {}\n    for toks, cls, _ in shaped:\n \
+          \       for k in range(2, min(len(cls), WINDOW) + 1):\n            key =\
+          \ tuple(sorted(cls[:k]))\n            cand[key] = cand.get(key, 0) + 1\n\
+          \    best_M, best_score = None, (-1, -1)\n    for M in sorted(cand, key=lambda\
+          \ t: (-cand[t], -len(t)))[:40]:\n        k = len(M)\n        covered = sum(1\
+          \ for _, cls, _ in shaped\n                      if len(cls) >= k and tuple(sorted(cls[:k]))\
+          \ == M)\n        if covered < 0.8 * n:\n            continue\n        if\
+          \ (covered, k) > best_score:\n            best_M, best_score = M, (covered,\
+          \ k)\n    if not best_M:\n        return None\n\n    k = len(best_M)\n \
+          \   orders = {}\n    for toks, cls, ts_val in shaped:\n        if len(cls)\
+          \ < k or tuple(sorted(cls[:k])) != best_M:\n            continue\n     \
+          \   orders.setdefault(tuple(cls[:k]), []).append((toks, ts_val))\n    if\
+          \ len(orders) < 2:\n        return None            # 순열 문제 아님 → 시퀀스 모드 담당\n\
+          \n    canon = max(orders, key=lambda o: len(orders[o]))\n\n    def vals_of(order,\
+          \ p):\n        return set(strip_wrap(t[p]) for t, _ in orders[order][:30]\
+          \ if len(t) > p)\n\n    mapping = {canon: dict((p, p) for p in range(k))}\n\
+          \    for o in orders:\n        if o == canon:\n            continue\n  \
+          \      m, used_c, ok = {}, set(), True\n        for p in range(k):\n   \
+          \         c = o[p]\n            cands = [q for q in range(k) if canon[q]\
+          \ == c and q not in used_c]\n            if not cands:\n               \
+          \ ok = False\n                break\n            if len(cands) == 1:\n \
+          \               q = cands[0]\n            else:\n                va = vals_of(o,\
+          \ p)\n                bq, bj = None, -1.0\n                for q2 in cands:\n\
+          \                    vb = vals_of(canon, q2)\n                    j = len(va\
+          \ & vb) / float(max(len(va | vb), 1))\n                    if j > bj:\n\
+          \                        bq, bj = q2, j\n                if bj < JACCARD_MIN:\n\
+          \                    ok = False       # 같은 클래스가 중복인데 값으로도 구분 불가\n      \
+          \              break\n                q = bq\n            m[p] = q\n   \
+          \         used_c.add(q)\n        if not ok:\n            return None\n \
+          \       mapping[o] = m\n\n    per_pos_vals, msg_ex, covered_n, order_count\
+          \ = {}, [], 0, {}\n    for o, items in orders.items():\n        order_count[o]\
+          \ = len(items)\n        for toks, ts_val in items:\n            covered_n\
+          \ += 1\n            for p in range(k):\n                q = mapping[o][p]\n\
+          \                v = token_value(toks[p], ts_val)\n                per_pos_vals.setdefault(q,\
+          \ []).append(v)\n            if len(msg_ex) < 2 and len(toks) > k:\n   \
+          \             msg_ex.append(\" \".join(toks[k:])[:100])\n\n    fields, names\
+          \ = name_fields(canon, per_pos_vals, covered_n, ts_regex, msg_ex)\n\n  \
+          \  variants = []\n    for o, cnt in sorted(order_count.items(), key=lambda\
+          \ kv: -kv[1])[:MAX_VARIANTS]:\n        parts = []\n        for p in range(k):\n\
+          \            q = mapping[o][p]\n            piece = build_piece(canon[q],\
+          \ names[q], ts_regex, per_pos_vals.get(q, []))\n            parts.append(piece\
+          \ if p == 0 else r\"\\s+\" + piece)\n        rx = \"^\" + \"\".join(parts)\
+          \ + r\"\\s*(?P<message>.*)$\"\n        try:\n            re.compile(rx,\
+          \ re.S)\n        except re.error:\n            continue\n        variants.append({\"\
+          variant_id\": len(variants) + 1, \"regex\": rx,\n                      \
+          \   \"kind\": \"order\",\n                         \"share\": round(cnt\
+          \ / covered_n, 4),\n                         \"field_order\": [names[mapping[o][p]]\
+          \ for p in range(k)],\n                         \"absent_fields\": []})\n\
+          \n    return {\"mode\": \"permutation\", \"fields\": fields, \"variants\"\
+          : variants,\n            \"unified_regex\": None, \"optional_field_count\"\
+          : 0,\n            \"unseen_variant_rate\": good_turing(order_count, covered_n),\n\
+          \            \"full_ratio\": 1.0}\n\n\ndef extract_plain(events, ts_regex):\n\
+          \    shaped = [tokenize(e, ts_regex) for e in events]\n    seq = plain_sequence(shaped,\
+          \ ts_regex)\n    perm = None\n    if seq is None or seq[\"full_ratio\"]\
+          \ < 0.5:\n        perm = plain_permutation(shaped, ts_regex)\n    chosen\
+          \ = seq if (seq and (perm is None or seq[\"full_ratio\"] >= 0.5)) else perm\n\
+          \    if chosen is None:\n        return {\"parser\": \"regex\", \"regex\"\
+          : \"\", \"variants\": [], \"fields\": [],\n                \"unseen_variant_rate\"\
+          : 1.0,\n                \"selector\": {\"kind\": \"regex\", \"pattern\"\
+          : \"\"},\n                \"note\": \"공통 구조를 찾지 못했습니다\"}\n\n    vs = chosen[\"\
+          variants\"]\n    spec = {\"parser\": \"regex_variants\" if len(vs) > 1 else\
+          \ \"regex\",\n            \"align_mode\": chosen[\"mode\"],\n          \
+          \  \"regex\": vs[0][\"regex\"] if vs else \"\",\n            \"unified_regex\"\
+          : chosen[\"unified_regex\"],\n            \"variants\": vs, \"fields\":\
+          \ chosen[\"fields\"],\n            \"optional_field_count\": chosen[\"optional_field_count\"\
+          ],\n            \"unseen_variant_rate\": chosen[\"unseen_variant_rate\"\
+          ],\n            \"selector\": {\"kind\": \"regex_any\",\n              \
+          \           \"patterns\": [v[\"regex\"] for v in vs]}}\n    if chosen[\"\
+          mode\"] == \"permutation\":\n        spec[\"note\"] = \"필드 순서가 %d가지로 관측되어\
+          \ 순열 변형으로 처리했습니다\" % len(vs)\n    elif len(vs) > 1:\n        spec[\"note\"\
+          ] = (\"옵셔널 필드 %d개 → 정규식 변형 %d개로 분리\"\n                        % (chosen[\"\
+          optional_field_count\"], len(vs)))\n    return spec\n\n\n# =================\
+          \ 클러스터 병합 =================\ndef sig_of(cls):\n    return tuple(cls[:6])\n\
+          \n\ndef core_sig(sig):\n    \"\"\"끝자락 WD 는 메시지 단어일 수 있어 신뢰하지 않는다.\n    \
+          \   구조화 토큰까지만 남겨 클러스터 동일성을 판단한다.\"\"\"\n    out = list(sig)\n    while out\
+          \ and out[-1] == \"WD\":\n        out.pop()\n    return out\n\n\ndef try_merge_plain(groups):\n\
+          \    keys = [k for k in groups if k.startswith(\"plain#\")]\n    keys.sort(key=lambda\
+          \ k: (-len(core_sig(k.split(\"#\")[1].split(\"|\"))),\n                \
+          \             -len(groups[k])))\n    merged, mapping = {}, {}\n    for k\
+          \ in keys:\n        small = core_sig(k.split(\"#\")[1].split(\"|\"))\n \
+          \       if not small:\n            merged[k] = list(groups[k])\n       \
+          \     continue\n        placed = False\n        for t in merged:\n     \
+          \       big = core_sig(t.split(\"#\")[1].split(\"|\"))\n            if not\
+          \ big:\n                continue\n            used, consumed = cover(small,\
+          \ big, strict=False)\n            if consumed == len(small) and len(used)\
+          \ == len(small):\n                merged[t].extend(groups[k])\n        \
+          \        mapping[k] = t\n                placed = True\n               \
+          \ break\n            if sorted(small) == sorted(big):      # 순열 관계\n   \
+          \             merged[t].extend(groups[k])\n                mapping[k] =\
+          \ t\n                placed = True\n                break\n        if not\
+          \ placed:\n            merged[k] = list(groups[k])\n    for k in groups:\n\
+          \        if not k.startswith(\"plain#\"):\n            merged[k] = groups[k]\n\
+          \    return merged, mapping\n\n\ndef build_fallback(ts_regex):\n    head\
+          \ = \"\"\n    if ts_regex:\n        head += r\"(?:(?P<timestamp>%s)\\s+)?\"\
+          \ % ts_regex\n    head += r\"(?:\\[?(?P<level>%s)\\]?:?\\s+)?\" % LEVEL_ALT\n\
+          \    rx = \"^\" + head + r\"(?P<message>.*)$\"\n    return {\"group_id\"\
+          : 999, \"structure\": \"fallback\", \"parser\": \"regex\",\n           \
+          \ \"is_fallback\": True, \"regex\": rx, \"unified_regex\": rx,\n       \
+          \     \"variants\": [], \"share\": 0.0, \"event_count\": 0,\n          \
+          \  \"match_rate\": None, \"unseen_variant_rate\": 0.0,\n            \"format_name\"\
+          : \"fallback\", \"examples\": [],\n            \"note\": \"미관측 변형이 와도 완전\
+          \ 실패 대신 부분 파싱되도록 하는 최후 스펙 (회계에서는 제외)\",\n            \"fields\": [\n   \
+          \             {\"index\": 1, \"name\": \"timestamp\", \"role\": \"timestamp\"\
+          ,\n                 \"type\": \"datetime\", \"nullable\": True, \"examples\"\
+          : []},\n                {\"index\": 2, \"name\": \"level\", \"role\": \"\
+          level\",\n                 \"type\": \"string\", \"nullable\": True, \"\
+          examples\": []},\n                {\"index\": 3, \"name\": \"message\",\
+          \ \"role\": \"message\",\n                 \"type\": \"string\", \"nullable\"\
+          : False, \"examples\": []}],\n            \"selector\": {\"kind\": \"regex\"\
+          , \"pattern\": rx}}\n\n\n# ================= 메인 =================\ndef main(log_sample:\
+          \ str) -> dict:\n    allr = [l.rstrip() for l in log_sample.split(\"\\n\"\
+          ) if l.strip()][:HARD_LINE_CAP]\n    if len(allr) < 2:\n        return {\"\
+          specs_json\": json.dumps({\"error\": \"최소 2줄 이상 필요합니다\"}, ensure_ascii=False),\n\
+          \                \"preview\": \"샘플이 부족합니다.\", \"group_samples\": \"\"}\n\
+          \n    warnings = []\n    ts = pick_ts(allr)\n    ts_regex = ts[\"regex\"\
+          ] if ts else None\n\n    all_events, merged_n = merge_multiline(allr, ts)\n\
+          \    if merged_n:\n        warnings.append(\"멀티라인 %d줄을 앞 이벤트에 병합했습니다\" %\
+          \ merged_n)\n    events, sampled = stratify(all_events, MAX_EVENTS)\n  \
+          \  if sampled:\n        warnings.append(\"이벤트 %d개 중 전 구간 균등 %d개를 표본으로 사용했습니다\"\
+          \n                        % (len(all_events), len(events)))\n\n    groups\
+          \ = {}\n    for e in events:\n        st = structure_of(e)\n        if st\
+          \ == \"plain\":\n            _, cls, _ = tokenize(e, ts_regex)\n       \
+          \     key = \"plain#\" + \"|\".join(sig_of(cls))\n        else:\n      \
+          \      key = st\n        groups.setdefault(key, []).append(e)\n\n    before\
+          \ = len([k for k in groups if k.startswith(\"plain#\")])\n    groups, cmap\
+          \ = try_merge_plain(groups)\n    after = len([k for k in groups if k.startswith(\"\
+          plain#\")])\n    if cmap:\n        warnings.append(\"옵셔널·순열로 갈라진 plain 클러스터\
+          \ %d개 → %d개로 병합\" % (before, after))\n\n    total = len(events)\n    ranked\
+          \ = sorted(groups.items(), key=lambda kv: -len(kv[1]))\n    # 근거가 3건 미만인\
+          \ 클러스터는 스펙을 만들지 않는다.\n    # (1건짜리로 정규식을 만들면 그 줄에만 맞는 쓰레기 스펙이 나온다)\n    big\
+          \ = [(k, v) for k, v in ranked if len(v) >= 3]\n    small = [(k, v) for\
+          \ k, v in ranked if len(v) < 3]\n    head, tail = big[:MAX_GROUPS], big[MAX_GROUPS:]\
+          \ + small\n\n    specs = []\n    for gi, (key, evs) in enumerate(head, 1):\n\
+          \        st = key.split(\"#\")[0]\n        try:\n            if st == \"\
+          json\":\n                spec = extract_json(evs, ts_regex)\n          \
+          \  elif st == \"logfmt\":\n                spec = extract_logfmt(evs, ts_regex)\n\
+          \            elif st == \"syslog5424\":\n                spec = extract_syslog5424(evs,\
+          \ ts_regex)\n            elif st.startswith(\"delimited:\"):\n         \
+          \       spec = extract_delimited(evs, st.split(\":\", 1)[1], ts_regex)\n\
+          \            else:\n                spec = extract_plain(evs, ts_regex)\n\
+          \        except Exception as ex:\n            warnings.append(\"그룹 %d 추출\
+          \ 실패: %s\" % (gi, ex))\n            continue\n\n        pats = [v[\"regex\"\
+          ] for v in spec.get(\"variants\", [])] or \\\n               ([spec[\"regex\"\
+          ]] if spec.get(\"regex\") else [])\n        rate = 1.0\n        if pats:\n\
+          \            try:\n                cxs = [re.compile(p, re.S) for p in pats]\n\
+          \                rate = round(sum(1 for e in evs\n                     \
+          \            if any(c.match(e) for c in cxs)) / len(evs), 4)\n         \
+          \   except re.error as ex:\n                warnings.append(\"그룹 %d 정규식\
+          \ 오류: %s\" % (gi, ex))\n                rate = 0.0\n        elif spec[\"\
+          parser\"] == \"json\":\n            ok = 0\n            for e in evs:\n\
+          \                try:\n                    json.loads(e.strip())\n     \
+          \               ok += 1\n                except Exception:\n           \
+          \         pass\n            rate = round(ok / len(evs), 4)\n        if rate\
+          \ < 0.9:\n            warnings.append(\"그룹 %d 자체 매칭률 %.0f%% — 확인 필요\" %\
+          \ (gi, rate * 100))\n        if spec.get(\"unseen_variant_rate\", 0) > 0.05:\n\
+          \            warnings.append(\"그룹 %d 미관측 변형 확률 %.1f%% — 표본이 부족할 수 있습니다\"\
+          \n                            % (gi, spec[\"unseen_variant_rate\"] * 100))\n\
+          \n        spec.update({\"group_id\": gi, \"structure\": st, \"is_fallback\"\
+          : False,\n                     \"share\": round(len(evs) / total, 4),\n\
+          \                     \"event_count\": len(evs), \"match_rate\": rate,\n\
+          \                     \"examples\": [e.split(\"\\n\")[0][:220] for e in\
+          \ evs[:2]]})\n        specs.append(spec)\n\n    residual = [{\"structure\"\
+          : k.split(\"#\")[0], \"event_count\": len(v),\n                 \"share\"\
+          : round(len(v) / total, 4),\n                 \"example\": v[0].split(\"\
+          \\n\")[0][:200]} for k, v in tail]\n\n    # ---- 회계 (fallback 제외) ----\n\
+          \    compiled = []\n    for s in sorted(specs, key=lambda x: -x[\"share\"\
+          ]):\n        pats = [v[\"regex\"] for v in s.get(\"variants\", [])] or \\\
+          \n               ([s[\"regex\"]] if s.get(\"regex\") else [])\n        cxs\
+          \ = []\n        for p in pats:\n            try:\n                cxs.append(re.compile(p,\
+          \ re.S))\n            except re.error:\n                pass\n        compiled.append((s,\
+          \ cxs))\n\n    fb = build_fallback(ts_regex)\n    fb_cx = re.compile(fb[\"\
+          regex\"], re.S)\n\n    parsed = 0\n    noise_counts, noise_ex, unknown_ex\
+          \ = {}, {}, []\n    unknown_events = []\n    for e in events:\n        hit\
+          \ = False\n        for s, cxs in compiled:\n            if cxs:\n      \
+          \          hit = any(c.match(e) for c in cxs)\n            elif s[\"parser\"\
+          ] == \"json\":\n                try:\n                    json.loads(e.strip())\n\
+          \                    hit = True\n                except Exception:\n   \
+          \                 hit = False\n            elif s[\"parser\"] == \"logfmt\"\
+          :\n                hit = len(KV_RE.findall(e)) >= 3\n            elif s[\"\
+          parser\"] == \"delimited\":\n                hit = e.count(s.get(\"delimiter\"\
+          , \",\")) >= \\\n                      s[\"selector\"].get(\"min_count\"\
+          , 1)\n            if hit:\n                break\n        if hit:\n    \
+          \        parsed += 1\n            continue\n        kind = noise_kind(e)\n\
+          \        if kind:\n            noise_counts[kind] = noise_counts.get(kind,\
+          \ 0) + 1\n            noise_ex.setdefault(kind, e.split(\"\\n\")[0][:120])\n\
+          \        else:\n            unknown_events.append(e)\n            if len(unknown_ex)\
+          \ < 8:\n                unknown_ex.append(e.split(\"\\n\")[0][:200])\n\n\
+          \    noise_total = sum(noise_counts.values())\n    unknown_total = len(unknown_events)\n\
+          \    fb_rescued = sum(1 for e in unknown_events if fb_cx.match(e))\n   \
+          \ parsed_r = round(parsed / total, 4)\n    noise_r = round(noise_total /\
+          \ total, 4)\n    unknown_r = round(unknown_total / total, 4)\n    fb_r =\
+          \ round(fb_rescued / total, 4)\n\n    # 전역 미관측 추정: 클러스터 크기 기준\n    clus_counter\
+          \ = dict((k, len(v)) for k, v in groups.items())\n    global_unseen = good_turing(clus_counter,\
+          \ total)\n\n    if unknown_r > 0.02:\n        warnings.append(\"미확인 %.1f%%\
+          \ (%d건) — 그중 %d건은 fallback으로 부분 파싱 가능\"\n                        % (unknown_r\
+          \ * 100, unknown_total, fb_rescued))\n    if residual:\n        warnings.append(\"\
+          상위 %d개 외 클러스터 %d개는 스펙을 만들지 않았습니다\"\n                        % (MAX_GROUPS,\
+          \ len(residual)))\n    if global_unseen > 0.02:\n        warnings.append(\"\
+          전역 미관측 클러스터 확률 %.1f%% — 표본을 늘리는 것을 권합니다\"\n                        % (global_unseen\
+          \ * 100))\n\n    specs_out = specs + [fb]\n\n    result = {\n        \"\
+          spec_version\": \"5.0\",\n        \"event_count\": total, \"raw_line_count\"\
+          : len(allr),\n        \"total_events_before_sampling\": len(all_events),\n\
+          \        \"stratified_sampled\": sampled,\n        \"multiline_merged\"\
+          : merged_n,\n        \"timestamp\": ts or {\"detected\": False},\n     \
+          \   \"cluster_count\": len(groups), \"cluster_merged\": len(cmap),\n   \
+          \     \"specs\": specs_out, \"residual_clusters\": residual,\n        \"\
+          accounting\": {\"parsed\": parsed_r, \"noise\": noise_r,\n             \
+          \          \"unknown\": unknown_r,\n                       \"fallback_recoverable\"\
+          : fb_r,\n                       \"noise_breakdown\": noise_counts,\n   \
+          \                    \"noise_examples\": noise_ex},\n        \"unseen_estimate\"\
+          : {\n            \"global_cluster\": global_unseen,\n            \"per_group\"\
+          : dict((str(s[\"group_id\"]), s.get(\"unseen_variant_rate\", 0))\n     \
+          \                         for s in specs),\n            \"method\": \"Good-Turing\
+          \ (1회 관측 변형 비율)\",\n            \"recommended_reprofile_threshold\": round(max(0.02,\
+          \ global_unseen * 2), 4)},\n        \"unknown_examples\": unknown_ex,\n\
+          \        \"dispatch_order\": [s[\"group_id\"] for s in\n               \
+          \            sorted(specs, key=lambda x: -x[\"share\"])] + [999],\n    \
+          \    \"warnings\": warnings,\n    }\n\n    out = [\"이벤트 %d개(표본) / 전체 %d개\
+          \ / 원본 %d줄 / 클러스터 %d개\"\n           % (total, len(all_events), len(allr),\
+          \ len(groups)),\n           \"회계: parsed %.0f%% / noise %.0f%% / unknown\
+          \ %.0f%% (fallback 구제 %.0f%%)\"\n           % (parsed_r * 100, noise_r *\
+          \ 100, unknown_r * 100, fb_r * 100),\n           \"미관측 추정: 전역 %.1f%%\" %\
+          \ (global_unseen * 100)]\n    if ts:\n        out.append(\"타임스탬프: %s → %s\
+          \ (%.0f%%)\"\n                   % (ts[\"name\"], ts[\"strptime\"], ts[\"\
+          coverage\"] * 100))\n    for s in specs:\n        out.append(\"\")\n   \
+          \     out.append(\"=== 그룹 %d | %s | 비중 %.0f%% | parser=%s | 정렬=%s | 변형 %d개\
+          \ | 미관측 %.1f%% ===\"\n                   % (s[\"group_id\"], s[\"structure\"\
+          ], s[\"share\"] * 100,\n                      s[\"parser\"], s.get(\"align_mode\"\
+          , \"-\"),\n                      len(s.get(\"variants\", [])),\n       \
+          \               s.get(\"unseen_variant_rate\", 0) * 100))\n        out.append(\"\
+          예시: \" + (s[\"examples\"][0] if s[\"examples\"] else \"\"))\n        for\
+          \ f in s[\"fields\"]:\n            out.append(\"  [%d] name=%s role=%s type=%s%s\
+          \ ex=%s\"\n                       % (f[\"index\"], f[\"name\"], f[\"role\"\
+          ], f[\"type\"],\n                          \" OPTIONAL\" if f.get(\"nullable\"\
+          ) else \"\",\n                          \" | \".join(str(x)[:40] for x in\
+          \ f[\"examples\"][:2])))\n\n    return {\n        \"specs_json\": json.dumps(result,\
+          \ ensure_ascii=False),\n        \"preview\": \"\\n\".join(out),\n      \
+          \  \"group_samples\": \"\\n\".join(\"[G%d] %s\" % (s[\"group_id\"], e)\n\
+          \                                   for s in specs for e in s[\"examples\"\
+          ]),\n    }\n"
+        code_language: python3
+        desc: 층화 표본 → 클러스터링 → 시퀀스/순열 정렬 자동 선택 → Good-Turing 미관측 추정 → fallback 포함 회계
+        outputs:
+          group_samples:
+            children: null
+            type: string
+          preview:
+            children: null
+            type: string
+          specs_json:
+            children: null
+            type: string
+        selected: false
+        title: 1. 구조 분기 추출 (코드)
+        type: code
+        variables:
+        - value_selector:
+          - '1722960000001'
+          - log_sample
+          variable: log_sample
+      height: 112
+      id: '1722960000002'
+      position:
+        x: 384
+        y: 300
+      positionAbsolute:
+        x: 384
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: role=unknown 필드에만 이름 부여 + 클러스터별 포맷 명명
+        model:
+          completion_params: {}
+          mode: chat
+          name: gpt-4o-mini
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: sys-x
+          role: system
+          text: "당신은 로그 필드 명명 전문가입니다.\n\n코드가 이미 로그를 클러스터로 나누고 각 클러스터의 필드를 정확히 분해했습니다.\n\
+            클러스터 구성, 필드 개수, 필드 순서, 필드 경계, OPTIONAL 표시, 정규식 변형,\n정렬 모드(sequence/permutation)는\
+            \ 모두 확정된 사실입니다. 절대 변경하지 마세요.\n\n당신의 역할은 두 가지뿐입니다.\n1. 각 클러스터가 어떤 소프트웨어의\
+            \ 어떤 로그인지 이름을 붙입니다.\n2. role이 \"unknown\" 또는 \"number\"인 필드에만 의미 있는 이름을\
+            \ 부여합니다.\n\n규칙:\n- role이 timestamp, level, message, http_method, http_status,\
+            \ client_ip,\n  path, url, duration, trace_id 등으로 확정된 필드는 name을 그대로 둡니다.\n\
+            - JSON 클러스터의 필드명에 밑줄이 있으면 원래 중첩 경로입니다. 바꾸지 말고\n  meaning만 채우세요.\n- 정렬=permutation인\
+            \ 그룹은 같은 필드가 줄마다 다른 위치에 나타나는 로그입니다.\n  필드명은 위치가 아니라 의미를 기준으로 붙이세요.\n-\
+            \ 새 이름은 소문자 snake_case, 파이썬 식별자로 유효해야 합니다.\n- 자주 쓰이는 이름: thread, logger,\
+            \ pid, tid, host, service, module, class_name,\n  method, user, session_id,\
+            \ request_id, bytes_sent, referrer, user_agent,\n  upstream, latency_ms,\
+            \ queue, topic, partition, offset\n- 입력에 있는 (group_id, index) 조합을 하나도\
+            \ 빠짐없이 그대로 반환합니다.\n\n설명, 마크다운, 코드펜스 없이 아래 JSON 객체 하나만 출력합니다.\n\n{\n  \"\
+            groups\": [\n    {\n      \"group_id\": 1,\n      \"format_name\": \"\
+            nginx_access | apache_combined | log4j | logback |\n                 \
+            \     python_logging | syslog_rfc5424 | json_structured |\n          \
+            \            logfmt | k8s | custom\",\n      \"producer\": \"이 로그를 생성한\
+            \ 소프트웨어 추정\",\n      \"confidence\": 0.0,\n      \"fields\": [\n     \
+            \   {\"index\": 1, \"name\": \"timestamp\", \"meaning\": \"이벤트 발생 시각\"\
+            }\n      ]\n    }\n  ],\n  \"relationship\": \"클러스터들이 서로 어떤 관계인지 한 문장\"\
+            ,\n  \"notes\": []\n}\n"
+        - id: user-x
+          role: user
+          text: '[코드가 분해한 클러스터와 필드]
+
+            {{#1722960000002.preview#}}
+
+
+            [클러스터별 원본 샘플]
+
+            {{#1722960000002.group_samples#}}
+
+            '
+        selected: false
+        title: 2. 클러스터 명명 (LLM)
+        type: llm
+        vision:
+          enabled: false
+      height: 132
+      id: '1722960000003'
+      position:
+        x: 686.4684021933374
+        y: 300
+      positionAbsolute:
+        x: 686.4684021933374
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        code: "import re\nimport json\n\n\ndef safe_name(s, used):\n    s = re.sub(r\"\
+          [^0-9a-zA-Z_]\", \"_\", (s or \"\").strip().lower())\n    if not s or not\
+          \ re.match(r\"^[a-zA-Z_]\", s):\n        s = \"f_\" + s\n    base, i = s,\
+          \ 2\n    while s in used:\n        s = \"%s_%d\" % (base, i)\n        i\
+          \ += 1\n    used.add(s)\n    return s\n\n\ndef main(specs_json: str, llm_output:\
+          \ str) -> dict:\n    data = json.loads(specs_json)\n    if \"error\" in\
+          \ data:\n        return {\"report\": data[\"error\"], \"spec_json\": specs_json,\n\
+          \                \"ready\": \"false\", \"format_summary\": \"-\"}\n\n  \
+          \  warnings = list(data.get(\"warnings\", []))\n    raw = llm_output.strip()\n\
+          \    if raw.startswith(\"```\"):\n        parts = raw.split(\"```\")\n \
+          \       raw = parts[1] if len(parts) > 1 else raw\n        if raw.lstrip().startswith(\"\
+          json\"):\n            raw = raw.lstrip()[4:]\n    try:\n        llm = json.loads(raw)\n\
+          \    except Exception as e:\n        llm = {\"groups\": [], \"relationship\"\
+          : \"\"}\n        warnings.append(\"LLM 명명 실패 (%s) — 코드 추론 이름을 사용합니다\" %\
+          \ e)\n\n    by_gid = {}\n    for g in llm.get(\"groups\", []):\n       \
+          \ try:\n            by_gid[int(g.get(\"group_id\"))] = g\n        except\
+          \ Exception:\n            continue\n\n    acc = data.get(\"accounting\"\
+          , {})\n    uns = data.get(\"unseen_estimate\", {})\n    rep = [\"## 로그 전처리\
+          \ 결과\", \"\"]\n    rep.append(\"- 이벤트 %d개 분석 (전체 %d개, 원본 %d줄, 멀티라인 병합 %d줄)\"\
+          \n               % (data[\"event_count\"], data.get(\"total_events_before_sampling\"\
+          , 0),\n                  data[\"raw_line_count\"], data[\"multiline_merged\"\
+          ]))\n    if data.get(\"stratified_sampled\"):\n        rep.append(\"- 전\
+          \ 구간 균등 표본 사용 (앞부분 편향 방지)\")\n    ts = data.get(\"timestamp\", {})\n   \
+          \ if ts.get(\"name\"):\n        rep.append(\"- 날짜시간: `%s` — strptime `%s`\
+          \ (커버리지 %.0f%%)\"\n                   % (ts[\"name\"], ts[\"strptime\"],\
+          \ ts[\"coverage\"] * 100))\n    else:\n        rep.append(\"- 날짜시간: 미검출\"\
+          )\n    rep.append(\"- 클러스터 %d개 (병합 %d건, 스펙 %d개 + fallback)\"\n         \
+          \      % (data[\"cluster_count\"], data.get(\"cluster_merged\", 0),\n  \
+          \                len([s for s in data[\"specs\"] if not s.get(\"is_fallback\"\
+          )])))\n    rep.append(\"\")\n    rep.append(\"| 구분 | 비율 | 의미 |\")\n    rep.append(\"\
+          |---|---|---|\")\n    rep.append(\"| parsed | %.1f%% | 스펙으로 파싱됨 |\" % (acc.get(\"\
+          parsed\", 0) * 100))\n    rep.append(\"| noise | %.1f%% | 구분선·배너 등 무시 가능\
+          \ |\" % (acc.get(\"noise\", 0) * 100))\n    rep.append(\"| unknown | %.1f%%\
+          \ | **사람 확인 필요** |\" % (acc.get(\"unknown\", 0) * 100))\n    rep.append(\"\
+          | └ fallback 구제 | %.1f%% | 부분 파싱은 가능 |\"\n               % (acc.get(\"fallback_recoverable\"\
+          , 0) * 100))\n    rep.append(\"\")\n    rep.append(\"**미관측 변형 추정** (%s)\"\
+          \ % uns.get(\"method\", \"\"))\n    rep.append(\"\")\n    rep.append(\"\
+          - 전역 클러스터: %.1f%% — 운영 중 처음 보는 로그 종류가 나타날 확률\"\n               % (uns.get(\"\
+          global_cluster\", 0) * 100))\n    rep.append(\"- 재프로파일 권장 임계치: unknown 비율\
+          \ %.1f%% 초과 시\"\n               % (uns.get(\"recommended_reprofile_threshold\"\
+          , 0.02) * 100))\n    if llm.get(\"relationship\"):\n        rep.append(\"\
+          \")\n        rep.append(\"관계: %s\" % llm[\"relationship\"])\n\n    all_ready\
+          \ = (acc.get(\"parsed\", 0) + acc.get(\"noise\", 0)) >= 0.98\n    names\
+          \ = []\n\n    for s in data[\"specs\"]:\n        if s.get(\"is_fallback\"\
+          ):\n            continue\n        g = by_gid.get(s[\"group_id\"], {})\n\
+          \        fname = g.get(\"format_name\", \"custom\")\n        names.append(\"\
+          G%d:%s\" % (s[\"group_id\"], fname))\n        nmap, mmap = {}, {}\n    \
+          \    for f in g.get(\"fields\", []):\n            try:\n               \
+          \ i = int(f.get(\"index\"))\n            except Exception:\n           \
+          \     continue\n            nmap[i] = f.get(\"name\", \"\")\n          \
+          \  mmap[i] = f.get(\"meaning\", \"\")\n\n        used, renames = set(),\
+          \ {}\n        for f in s[\"fields\"]:\n            old = f[\"name\"]\n \
+          \           if f[\"role\"] in (\"unknown\", \"number\") and nmap.get(f[\"\
+          index\"]):\n                new = safe_name(nmap[f[\"index\"]], used)\n\
+          \                if new != old:\n                    renames[old] = new\n\
+          \                f[\"name\"] = new\n            else:\n                used.add(old)\n\
+          \            f[\"meaning\"] = mmap.get(f[\"index\"], \"\")\n\n        def\
+          \ apply(rx):\n            for o, nw in renames.items():\n              \
+          \  rx = rx.replace(\"(?P<%s>\" % o, \"(?P<%s>\" % nw, 1)\n            return\
+          \ rx\n\n        bad = False\n        for v in s.get(\"variants\", []):\n\
+          \            cand = apply(v[\"regex\"])\n            try:\n            \
+          \    re.compile(cand, re.S)\n                v[\"regex\"] = cand\n     \
+          \           v[\"absent_fields\"] = [renames.get(x, x) for x in v.get(\"\
+          absent_fields\", [])]\n                if v.get(\"field_order\"):\n    \
+          \                v[\"field_order\"] = [renames.get(x, x) for x in v[\"field_order\"\
+          ]]\n            except re.error:\n                bad = True\n        for\
+          \ key in (\"regex\", \"unified_regex\"):\n            if s.get(key):\n \
+          \               cand = apply(s[key])\n                try:\n           \
+          \         re.compile(cand, re.S)\n                    s[key] = cand\n  \
+          \              except re.error:\n                    bad = True\n      \
+          \  if bad:\n            warnings.append(\"그룹 %d 이름 반영 중 일부 정규식 오류 — 원본 유지\"\
+          \ % s[\"group_id\"])\n\n        s[\"format_name\"] = fname\n        s[\"\
+          producer\"] = g.get(\"producer\", \"\")\n        s[\"confidence\"] = g.get(\"\
+          confidence\", 0.0)\n        if (s.get(\"match_rate\") or 0) < 0.9:\n   \
+          \         all_ready = False\n\n        rep.append(\"\")\n        rep.append(\"\
+          ### 그룹 %d — %s (%s, 비중 %.0f%%, 매칭률 %.0f%%)\"\n                   % (s[\"\
+          group_id\"], fname, s[\"structure\"],\n                      s[\"share\"\
+          ] * 100, (s.get(\"match_rate\") or 0) * 100))\n        meta = []\n     \
+          \   if s.get(\"producer\"):\n            meta.append(\"생성자 추정: %s\" % s[\"\
+          producer\"])\n        if s.get(\"align_mode\"):\n            meta.append(\"\
+          정렬: %s\" % s[\"align_mode\"])\n        meta.append(\"미관측 변형 확률 %.1f%%\"\
+          \ % (s.get(\"unseen_variant_rate\", 0) * 100))\n        rep.append(\" /\
+          \ \".join(meta))\n        if s.get(\"note\"):\n            rep.append(\"\
+          비고: %s\" % s[\"note\"])\n        rep.append(\"\")\n        rep.append(\"\
+          ```\")\n        rep.append(s[\"examples\"][0] if s[\"examples\"] else \"\
+          \")\n        rep.append(\"```\")\n        rep.append(\"\")\n        rep.append(\"\
+          | # | 필드명 | 역할 | 타입 | 필수 | 예시 |\")\n        rep.append(\"|---|---|---|---|---|---|\"\
+          )\n        for f in s[\"fields\"]:\n            rep.append(\"| %d | `%s`\
+          \ | %s | %s | %s | %s |\" % (\n                f[\"index\"], f[\"name\"\
+          ], f[\"role\"], f[\"type\"],\n                \"선택\" if f.get(\"nullable\"\
+          ) else \"필수\",\n                \" / \".join(str(x)[:32].replace(\"|\",\
+          \ \"\\\\|\")\n                           for x in f.get(\"examples\", [])[:2])))\n\
+          \n        vs = s.get(\"variants\", [])\n        if len(vs) > 1:\n      \
+          \      kind = \"순서 변형\" if vs[0].get(\"kind\") == \"order\" else \"필드 유무\
+          \ 변형\"\n            rep.append(\"\")\n            rep.append(\"파서: 정규식 %s\
+          \ %d개 — **위에서부터 순서대로 시도**\" % (kind, len(vs)))\n            for v in vs:\n\
+          \                if v.get(\"field_order\"):\n                    tag = \"\
+          순서: \" + \" → \".join(v[\"field_order\"])\n                else:\n     \
+          \               tag = \"누락 필드: \" + (\", \".join(v.get(\"absent_fields\"\
+          , [])) or \"없음\")\n                rep.append(\"\")\n                rep.append(\"\
+          변형 %d (%.0f%%, %s)\" % (v[\"variant_id\"], v[\"share\"] * 100, tag))\n \
+          \               rep.append(\"```\")\n                rep.append(v[\"regex\"\
+          ])\n                rep.append(\"```\")\n            if s.get(\"unified_regex\"\
+          ):\n                rep.append(\"\")\n                rep.append(\"단일 정규식으로도\
+          \ 처리 가능\")\n                rep.append(\"```\")\n                rep.append(s[\"\
+          unified_regex\"])\n                rep.append(\"```\")\n        elif vs\
+          \ or s.get(\"regex\"):\n            rep.append(\"\")\n            rep.append(\"\
+          파서: 정규식\")\n            rep.append(\"```\")\n            rep.append(vs[0][\"\
+          regex\"] if vs else s[\"regex\"])\n            rep.append(\"```\")\n   \
+          \     elif s[\"parser\"] == \"delimited\":\n            rep.append(\"\"\
+          )\n            rep.append(\"파서: 구분자 `%s`%s\" % (s.get(\"delimiter\"),\n\
+          \                       \" (헤더 행 있음)\" if s.get(\"has_header\") else \"\"\
+          ))\n        elif s[\"parser\"] == \"json\":\n            rep.append(\"\"\
+          )\n            rep.append(\"파서: json — 중첩 키는 `.` 경로로 평탄화 (정규식 불필요)\")\n\
+          \        else:\n            rep.append(\"\")\n            rep.append(\"\
+          파서: %s (정규식 불필요)\" % s[\"parser\"])\n\n    fb = next((s for s in data[\"\
+          specs\"] if s.get(\"is_fallback\")), None)\n    if fb:\n        rep.append(\"\
+          \")\n        rep.append(\"### fallback 스펙 (dispatch 최후순위)\")\n        rep.append(fb.get(\"\
+          note\", \"\"))\n        rep.append(\"```\")\n        rep.append(fb[\"regex\"\
+          ])\n        rep.append(\"```\")\n\n    nb = acc.get(\"noise_breakdown\"\
+          , {})\n    if nb:\n        rep.append(\"\")\n        rep.append(\"### 잡음\
+          \ 분류 (무시 가능)\")\n        rep.append(\"\")\n        rep.append(\"| 종류 | 건수\
+          \ | 예시 |\")\n        rep.append(\"|---|---|---|\")\n        for k, v in\
+          \ sorted(nb.items(), key=lambda kv: -kv[1]):\n            ex = acc.get(\"\
+          noise_examples\", {}).get(k, \"\")\n            rep.append(\"| %s | %d |\
+          \ `%s` |\" % (k, v, ex.replace(\"|\", \"\\\\|\")[:60]))\n\n    if data.get(\"\
+          residual_clusters\"):\n        rep.append(\"\")\n        rep.append(\"###\
+          \ 스펙 미생성 클러스터\")\n        for r in data[\"residual_clusters\"]:\n      \
+          \      rep.append(\"- %s / %d건 (%.1f%%) — `%s`\"\n                     \
+          \  % (r[\"structure\"], r[\"event_count\"],\n                          r[\"\
+          share\"] * 100, r[\"example\"][:80]))\n\n    if data.get(\"unknown_examples\"\
+          ):\n        rep.append(\"\")\n        rep.append(\"### 미확인 이벤트 (사람 확인 필요)\"\
+          )\n        for u in data[\"unknown_examples\"]:\n            rep.append(\"\
+          - `%s`\" % u[:120])\n\n    data[\"warnings\"] = warnings\n    data[\"ready_for_parsing\"\
+          ] = all_ready\n    if warnings:\n        rep += [\"\", \"### 경고\"] + [\"\
+          - \" + w for w in warnings]\n\n    return {\n        \"report\": \"\\n\"\
+          .join(rep),\n        \"spec_json\": json.dumps(data, ensure_ascii=False,\
+          \ indent=2),\n        \"ready\": \"true\" if all_ready else \"false\",\n\
+          \        \"format_summary\": \", \".join(names),\n    }\n"
+        code_language: python3
+        desc: LLM 명명을 모든 변형에 반영, 재검증, 회계·미관측 추정·fallback 포함 리포트 생성
+        outputs:
+          format_summary:
+            children: null
+            type: string
+          ready:
+            children: null
+            type: string
+          report:
+            children: null
+            type: string
+          spec_json:
+            children: null
+            type: string
+        selected: false
+        title: 3. 병합 / 검증 / 리포트
+        type: code
+        variables:
+        - value_selector:
+          - '1722960000002'
+          - specs_json
+          variable: specs_json
+        - value_selector:
+          - '1722960000003'
+          - text
+          variable: llm_output
+      height: 96
+      id: '1722960000004'
+      position:
+        x: 992
+        y: 300
+      positionAbsolute:
+        x: 992
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        code: "import re\nimport json\nfrom datetime import datetime as _dt\n\n# strptime\
+          \ -> java.time DateTimeFormatter\n\n\ndef validate_strptime(samples, variants):\n\
+          \    \"\"\"도출한 포맷으로 실제 관측값이 파싱되는지 확인한다.\n       자바로 넘기기 전에 여기서 걸러야 한다.\"\
+          \"\"\n    if not samples or not variants:\n        return 0.0, None\n  \
+          \  ok, fail = 0, None\n    for s in samples:\n        hit = False\n    \
+          \    for v in variants:\n            try:\n                _dt.strptime(s,\
+          \ v)\n                hit = True\n                break\n            except\
+          \ Exception:\n                pass\n        if not hit:\n            # 파이썬\
+          \ %f 는 6자리까지만 — 나노초는 잘라서 재시도\n            s2 = re.sub(r\"([.,]\\d{6})\\\
+          d+\", r\"\\1\", s)\n            for v in variants:\n                try:\n\
+          \                    _dt.strptime(s2, v)\n                    hit = True\n\
+          \                    break\n                except Exception:\n        \
+          \            pass\n        if hit:\n            ok += 1\n        elif fail\
+          \ is None:\n            fail = s\n    return round(ok / float(len(samples)),\
+          \ 4), fail\n\nJAVA_DATE = {\n    \"%Y\": \"yyyy\", \"%y\": \"yy\", \"%m\"\
+          : \"MM\", \"%d\": \"dd\", \"%e\": \"d\",\n    \"%H\": \"HH\", \"%I\": \"\
+          hh\", \"%M\": \"mm\", \"%S\": \"ss\", \"%f\": \"SSSSSS\",\n    \"%z\": \"\
+          Z\", \"%Z\": \"zzz\", \"%b\": \"MMM\", \"%B\": \"MMMM\", \"%p\": \"a\",\n\
+          \    \"%j\": \"DDD\", \"%%\": \"%\",\n}\n\n# 역할 -> Grok 패턴\nGROK_BY_ROLE\
+          \ = {\n    \"level\": \"LOGLEVEL\", \"client_ip\": \"IP\", \"http_method\"\
+          : \"WORD\",\n    \"http_status\": \"NUMBER\", \"http_version\": \"NOTSPACE\"\
+          ,\n    \"path\": \"URIPATHPARAM\", \"url\": \"URI\", \"duration\": \"NUMBER\"\
+          ,\n    \"trace_id\": \"UUID\", \"hex_id\": \"NOTSPACE\", \"number\": \"\
+          NUMBER\",\n    \"port\": \"INT\", \"host\": \"HOSTNAME\", \"service\": \"\
+          NOTSPACE\",\n    \"thread\": \"DATA\", \"logger\": \"JAVACLASS\",\n    \"\
+          message\": \"GREEDYDATA\",\n}\nGROK_TS = {\n    \"iso8601\": \"TIMESTAMP_ISO8601\"\
+          , \"clf\": \"HTTPDATE\",\n    \"syslog_bsd\": \"SYSLOGTIMESTAMP\", \"time_only\"\
+          : \"TIME\",\n    \"dmy_dash\": \"CATALINA_DATESTAMP\",\n    \"epoch_ms\"\
+          : \"NUMBER\", \"epoch_s\": \"NUMBER\",\n}\n\n\ndef java_gname(name, used):\n\
+          \    \"\"\"자바 named group 규칙: [a-zA-Z][a-zA-Z0-9]* — 밑줄·숫자시작 불가\"\"\"\n\
+          \    parts = [p for p in re.split(r\"[^0-9a-zA-Z]+\", name or \"\") if p]\n\
+          \    if not parts:\n        parts = [\"f\"]\n    s = parts[0][0].lower()\
+          \ + parts[0][1:]\n    for p in parts[1:]:\n        s += p[0].upper() + p[1:]\n\
+          \    s = re.sub(r\"[^0-9a-zA-Z]\", \"\", s)\n    if not s or not s[0].isalpha():\n\
+          \        s = \"f\" + s\n    base, i = s, 2\n    while s in used:\n     \
+          \   s = base + str(i)\n        i += 1\n    used.add(s)\n    return s\n\n\
+          \ndef to_java_regex(rx, gmap):\n    if not rx:\n        return \"\"\n  \
+          \  out = rx\n    for old, new in gmap.items():\n        out = out.replace(\"\
+          (?P<%s>\" % old, \"(?<%s>\" % new)\n    out = re.sub(r\"\\(\\?P<([^>]*)>\"\
+          , lambda m: \"(?<%s>\" % re.sub(r\"[^0-9a-zA-Z]\", \"\", m.group(1)), out)\n\
+          \    return out\n\n\ndef java_literal(rx):\n    return rx.replace(\"\\\\\
+          \", \"\\\\\\\\\").replace('\"', '\\\\\"')\n\n\ndef strptime_to_java(fmt):\n\
+          \    if not fmt or fmt.startswith(\"epoch\"):\n        return None\n   \
+          \ out, i = [], 0\n    while i < len(fmt):\n        if fmt[i] == \"%\" and\
+          \ i + 1 < len(fmt):\n            out.append(JAVA_DATE.get(fmt[i:i + 2],\
+          \ \"\"))\n            i += 2\n        else:\n            ch = fmt[i]\n \
+          \           out.append(\"'\" + ch + \"'\" if ch.isalpha() else ch)\n   \
+          \         i += 1\n    return \"\".join(out)\n\n\ndef ts_java_snippet(ts):\n\
+          \    name = ts.get(\"name\", \"\")\n    jp = strptime_to_java(ts.get(\"\
+          strptime\"))\n    if name == \"epoch_ms\":\n        return (\"Instant.ofEpochMilli(Long.parseLong(v))\"\
+          , None,\n                \"epoch 밀리초 — DateTimeFormatter 불필요\")\n    if\
+          \ name == \"epoch_s\":\n        return (\"Instant.ofEpochSecond(Long.parseLong(v))\"\
+          , None,\n                \"epoch 초 — DateTimeFormatter 불필요\")\n    if name\
+          \ == \"iso8601\":\n        return (\"OffsetDateTime.parse(v)\", \"ISO_OFFSET_DATE_TIME\"\
+          ,\n                \"오프셋이 없는 줄이 섞이면 LocalDateTime.parse(v) 로 폴백하세요\")\n\
+          \    if name == \"clf\":\n        return (\"OffsetDateTime.parse(v, TS)\"\
+          , jp,\n                \"MMM 파싱에는 Locale.ENGLISH 가 반드시 필요합니다\")\n    if\
+          \ name == \"syslog_bsd\":\n        return (\"MonthDay.parse(v, TS)\", jp,\n\
+          \                \"연도가 없습니다 — withYear() 로 연도를 주입해야 합니다\")\n    if name\
+          \ == \"dmy_dash\":\n        return (\"LocalDateTime.parse(v, TS)\", jp,\n\
+          \                \"MMM 파싱에는 Locale.ENGLISH 가 반드시 필요합니다\")\n    return (\"\
+          LocalDateTime.parse(v, TS)\", jp, None)\n\n\ndef logback_pattern(spec, ts):\n\
+          \    \"\"\"logback/log4j2 conversion pattern 역추정\"\"\"\n    if spec.get(\"\
+          structure\") != \"plain\" and spec.get(\"parser\") not in (\"regex\", \"\
+          regex_variants\"):\n        return None\n    jp = strptime_to_java(ts.get(\"\
+          strptime\")) if ts.get(\"strptime\") else None\n    out = []\n    for f\
+          \ in spec[\"fields\"]:\n        r, nm = f.get(\"role\"), f.get(\"name\"\
+          , \"\")\n        if r == \"timestamp\":\n            out.append(\"%%d{%s}\"\
+          \ % (jp or \"ISO8601\"))\n        elif r == \"level\":\n            out.append(\"\
+          %-5level\")\n        elif nm in (\"thread\",):\n            out.append(\"\
+          [%thread]\")\n        elif nm in (\"logger\", \"class_name\", \"module\"\
+          ):\n            out.append(\"%logger\")\n        elif nm in (\"pid\", \"\
+          tid\"):\n            out.append(\"%%X{%s}\" % nm)\n        elif r == \"\
+          message\":\n            out.append(\"%msg%n\")\n        else:\n        \
+          \    out.append(\"%%X{%s}\" % nm)\n    return \" \".join(out)\n\n\ndef grok_pattern(spec,\
+          \ ts):\n    if spec.get(\"parser\") not in (\"regex\", \"regex_variants\"\
+          ):\n        return None\n    out = []\n    for f in spec[\"fields\"]:\n\
+          \        r, nm = f.get(\"role\"), f.get(\"name\", \"\")\n        if r ==\
+          \ \"timestamp\":\n            g = GROK_TS.get(ts.get(\"name\", \"\"), \"\
+          TIMESTAMP_ISO8601\")\n        else:\n            g = GROK_BY_ROLE.get(r,\
+          \ \"NOTSPACE\")\n        piece = \"%%{%s:%s}\" % (g, nm)\n        if f.get(\"\
+          nullable\"):\n            piece = \"(?:%s)?\" % piece\n        out.append(piece)\n\
+          \    return \" \".join(out)\n\n\ndef nginx_log_format(spec):\n    role_map\
+          \ = {\"client_ip\": \"$remote_addr\", \"http_status\": \"$status\",\n  \
+          \              \"path\": \"$request_uri\", \"http_method\": \"$request_method\"\
+          ,\n                \"url\": \"$request_uri\", \"duration\": \"$request_time\"\
+          ,\n                \"timestamp\": \"$time_local\", \"message\": \"$request\"\
+          }\n    if not any(f.get(\"role\") == \"http_status\" for f in spec[\"fields\"\
+          ]):\n        return None\n    parts = [role_map.get(f.get(\"role\"), \"\
+          $\" + f.get(\"name\", \"x\"))\n             for f in spec[\"fields\"]]\n\
+          \    return \"log_format custom '%s';\" % \" \".join(parts)\n\n\ndef build_java(specs,\
+          \ ts):\n    lines = []\n    lines.append(\"// ===== LogParser.java =====\"\
+          )\n    lines.append(\"// 이 파일은 로그 전처리 결과에서 자동 생성되었습니다.\")\n    lines.append(\"\
+          package log.parser;\")\n    lines.append(\"\")\n    lines.append(\"import\
+          \ java.time.*;\")\n    lines.append(\"import java.time.format.DateTimeFormatter;\"\
+          )\n    lines.append(\"import java.util.*;\")\n    lines.append(\"import\
+          \ java.util.regex.*;\")\n    lines.append(\"\")\n\n    expr, jp, note =\
+          \ ts_java_snippet(ts) if ts.get(\"name\") else (None, None, None)\n\n  \
+          \  lines.append(\"public final class LogParser {\")\n    lines.append(\"\
+          \")\n    if jp and jp != \"ISO_OFFSET_DATE_TIME\":\n        lines.append(\"\
+          \    // %s\" % (note or \"\"))\n        lines.append('    public static\
+          \ final DateTimeFormatter TS =')\n        lines.append('            DateTimeFormatter.ofPattern(\"\
+          %s\", Locale.ENGLISH);' % jp)\n    elif jp == \"ISO_OFFSET_DATE_TIME\":\n\
+          \        lines.append(\"    // %s\" % (note or \"\"))\n        lines.append(\"\
+          \    public static final DateTimeFormatter TS =\")\n        lines.append(\"\
+          \            DateTimeFormatter.ISO_OFFSET_DATE_TIME;\")\n    lines.append(\"\
+          \")\n    lines.append(\"    public record ParsedLine(int group, String format,\"\
+          )\n    lines.append(\"                            Map<String, String> fields,\"\
+          )\n    lines.append(\"                            boolean fallback) {}\"\
+          )\n    lines.append(\"\")\n\n    real = [s for s in specs if not s.get(\"\
+          is_fallback\")]\n    fb = next((s for s in specs if s.get(\"is_fallback\"\
+          )), None)\n\n    for s in real:\n        gid = s[\"group_id\"]\n       \
+          \ pats = [v[\"regex\"] for v in s.get(\"variants\", [])] or \\\n       \
+          \        ([s[\"regex\"]] if s.get(\"regex\") else [])\n        if not pats:\n\
+          \            continue\n        lines.append(\"    // 그룹 %d — %s (%s)\"\n\
+          \                     % (gid, s.get(\"format_name\", \"custom\"), s.get(\"\
+          structure\")))\n        lines.append(\"    private static final Pattern[]\
+          \ G%d = {\" % gid)\n        for p in pats:\n            lines.append(' \
+          \           Pattern.compile(\"%s\", Pattern.DOTALL),'\n                \
+          \         % java_literal(s[\"_java\"][p]))\n        lines.append(\"    };\"\
+          )\n        lines.append(\"\")\n\n    if fb:\n        lines.append(\"   \
+          \ // 최후순위 — 미관측 변형도 부분 파싱\")\n        lines.append('    private static final\
+          \ Pattern FALLBACK =')\n        lines.append('            Pattern.compile(\"\
+          %s\", Pattern.DOTALL);'\n                     % java_literal(fb[\"_java\"\
+          ][fb[\"regex\"]]))\n        lines.append(\"\")\n\n    # 정규식이 있는 그룹만 배열에\
+          \ 넣는다 (JSON/logfmt/CSV 는 별도 파서)\n    regex_specs = [s for s in real if s.get(\"\
+          variants\") or s.get(\"regex\")]\n    lines.append(\"    private static\
+          \ final String[] G_NAMES = {\")\n    for s in regex_specs:\n        lines.append('\
+          \            \"%s\",' % s.get(\"format_name\", \"custom\"))\n    lines.append(\"\
+          \    };\")\n    lines.append(\"\")\n    lines.append(\"    private static\
+          \ final Pattern[][] GROUPS = {\")\n    for s in regex_specs:\n        lines.append(\"\
+          \            G%d,\" % s[\"group_id\"])\n    lines.append(\"    };\")\n \
+          \   lines.append(\"    private static final int[] G_IDS = {\")\n    for\
+          \ s in regex_specs:\n        lines.append(\"            %d,\" % s[\"group_id\"\
+          ])\n    lines.append(\"    };\")\n    non_regex = [s for s in real if s\
+          \ not in regex_specs]\n    if non_regex:\n        lines.append(\"\")\n \
+          \       for s in non_regex:\n            lines.append(\"    // 그룹 %d (%s)\
+          \ 은 parser=%s — 정규식이 아니라 %s 로 처리하세요\"\n                         % (s[\"\
+          group_id\"], s.get(\"format_name\", \"custom\"),\n                     \
+          \       s.get(\"parser\"),\n                            \"Jackson + JsonPointer\"\
+          \ if s.get(\"parser\") == \"json\"\n                            else \"\
+          split/KV 파싱\"))\n    lines.append(\"\")\n    lines.append(\"    /** dispatch\
+          \ 순서대로 시도. 누락 필드는 map 에 들어가지 않습니다. */\")\n    lines.append(\"    public\
+          \ static Optional<ParsedLine> parse(String line) {\")\n    lines.append(\"\
+          \        for (int g = 0; g < GROUPS.length; g++) {\")\n    lines.append(\"\
+          \            for (Pattern p : GROUPS[g]) {\")\n    lines.append(\"     \
+          \           Matcher m = p.matcher(line);\")\n    lines.append(\"       \
+          \         if (!m.matches()) continue;\")\n    lines.append(\"          \
+          \      Map<String, String> f = new LinkedHashMap<>();\")\n    lines.append(\"\
+          \                for (Map.Entry<String, Integer> e : namedGroups(p).entrySet())\
+          \ {\")\n    lines.append(\"                    String v = m.group(e.getValue());\"\
+          )\n    lines.append(\"                    if (v != null) f.put(e.getKey(),\
+          \ v);\")\n    lines.append(\"                }\")\n    lines.append(\" \
+          \               return Optional.of(new ParsedLine(G_IDS[g], G_NAMES[g],\
+          \ f, false));\")\n    lines.append(\"            }\")\n    lines.append(\"\
+          \        }\")\n    if fb:\n        lines.append(\"        Matcher m = FALLBACK.matcher(line);\"\
+          )\n        lines.append(\"        if (m.matches()) {\")\n        lines.append(\"\
+          \            Map<String, String> f = new LinkedHashMap<>();\")\n       \
+          \ lines.append(\"            for (Map.Entry<String, Integer> e : namedGroups(FALLBACK).entrySet())\
+          \ {\")\n        lines.append(\"                String v = m.group(e.getValue());\"\
+          )\n        lines.append(\"                if (v != null) f.put(e.getKey(),\
+          \ v);\")\n        lines.append(\"            }\")\n        lines.append('\
+          \            return Optional.of(new ParsedLine(999, \"fallback\", f, true));')\n\
+          \        lines.append(\"        }\")\n    lines.append(\"        return\
+          \ Optional.empty();\")\n    lines.append(\"    }\")\n    lines.append(\"\
+          \")\n    lines.append(\"    /** Java 는 그룹명 목록 API 가 없어 패턴에서 직접 추출합니다. */\"\
+          )\n    lines.append(\"    private static final Map<Pattern, Map<String,\
+          \ Integer>> CACHE =\")\n    lines.append(\"            new IdentityHashMap<>();\"\
+          )\n    lines.append(\"    private static final Pattern NAMED =\")\n    lines.append('\
+          \            Pattern.compile(\"\\\\\\\\(\\\\\\\\?<([a-zA-Z][a-zA-Z0-9]*)>\"\
+          );')\n    lines.append(\"\")\n    lines.append(\"    private static synchronized\
+          \ Map<String, Integer> namedGroups(Pattern p) {\")\n    lines.append(\"\
+          \        return CACHE.computeIfAbsent(p, k -> {\")\n    lines.append(\"\
+          \            Map<String, Integer> r = new LinkedHashMap<>();\")\n    lines.append(\"\
+          \            Matcher m = NAMED.matcher(k.pattern());\")\n    lines.append(\"\
+          \            int i = 0;\")\n    lines.append(\"            while (m.find())\
+          \ r.put(m.group(1), ++i);\")\n    lines.append(\"            return r;\"\
+          )\n    lines.append(\"        });\")\n    lines.append(\"    }\")\n    lines.append(\"\
+          \")\n    if expr:\n        lines.append(\"    /** 타임스탬프 문자열 -> 시간 객체 */\"\
+          )\n        lines.append(\"    public static Object toTime(String v) {\"\
+          )\n        lines.append(\"        return %s;\" % expr)\n        lines.append(\"\
+          \    }\")\n    lines.append(\"}\")\n\n    # 그룹별 record\n    for s in real:\n\
+          \        gid = s[\"group_id\"]\n        used = set()\n        comps = []\n\
+          \        for f in s[\"fields\"]:\n            comps.append(\"String \" +\
+          \ java_gname(f[\"name\"], used))\n        lines.append(\"\")\n        lines.append(\"\
+          // ===== G%dEvent.java =====\" % gid)\n        lines.append(\"// %s — 누락\
+          \ 가능 필드는 null 이 들어옵니다\"\n                     % s.get(\"format_name\", \"\
+          custom\"))\n        lines.append(\"public record G%dEvent(%s) {}\" % (gid,\
+          \ \", \".join(comps)))\n\n    return \"\\n\".join(lines)\n\n\nOFFSET_JAVA\
+          \ = {\"none\": \"\", \"Z\": \"XXX\", \"colon\": \"XXX\", \"nocolon\": \"\
+          Z\"}\n\n\ndef analyze_ts_samples(name, samples):\n    \"\"\"실제 관측된 타임스탬프\
+          \ 문자열에서 포맷을 도출한다.\n       고정 테이블만 믿으면 밀리초·오프셋 유무를 놓친다.\"\"\"\n    ex = [s\
+          \ for s in samples if s]\n    if not ex:\n        return None\n\n    if\
+          \ name in (\"epoch_ms\", \"epoch_s\"):\n        unit = \"MILLIS\" if name\
+          \ == \"epoch_ms\" else \"SECONDS\"\n        return {\"kind\": name, \"sample\"\
+          : ex[0],\n                \"java_pattern\": \"EPOCH_\" + unit,\n       \
+          \         \"java_type\": \"Instant\", \"strptime\": name,\n            \
+          \    \"has_offset\": True, \"fraction_digits\": 0,\n                \"parse_snippet\"\
+          : (\"Instant.ofEpochMilli(Long.parseLong(v))\"\n                       \
+          \           if name == \"epoch_ms\"\n                                  else\
+          \ \"Instant.ofEpochSecond(Long.parseLong(v))\"),\n                \"note\"\
+          : \"epoch 값 — DateTimeFormatter 를 쓰지 않습니다\"}\n\n    ISO = re.compile(\n\
+          \        r\"^(\\d{4})([-/.])(\\d{2})\\2(\\d{2})([T ])(\\d{2}):(\\d{2}):(\\\
+          d{2})\"\n        r\"(?:([.,])(\\d+))?(Z|[+-]\\d{2}:\\d{2}|[+-]\\d{4})?$\"\
+          )\n\n    fracs, offs, dsep, tsep, fsep = set(), set(), set(), set(), set()\n\
+          \    parsed = 0\n    for s in ex:\n        m = ISO.match(s)\n        if\
+          \ not m:\n            continue\n        parsed += 1\n        dsep.add(m.group(2))\n\
+          \        tsep.add(m.group(5))\n        fracs.add(len(m.group(10)) if m.group(10)\
+          \ else 0)\n        if m.group(9):\n            fsep.add(m.group(9))\n  \
+          \      o = m.group(11)\n        if not o:\n            offs.add(\"none\"\
+          )\n        elif o == \"Z\":\n            offs.add(\"Z\")\n        elif \"\
+          :\" in o:\n            offs.add(\"colon\")\n        else:\n            offs.add(\"\
+          nocolon\")\n\n    if parsed and parsed >= 0.8 * len(ex):\n        d = dsep.pop()\
+          \ if len(dsep) == 1 else \"-\"\n        t = tsep.pop() if len(tsep) == 1\
+          \ else \" \"\n        fs = fsep.pop() if len(fsep) == 1 else \".\"\n   \
+          \     pat = \"yyyy%sMM%sdd\" % (d, d)\n        pat += (\"'T'\" if t == \"\
+          T\" else \" \") + \"HH:mm:ss\"\n\n        nz = sorted(x for x in fracs if\
+          \ x)\n        if nz:\n            frac = fs + \"S\" * max(nz)\n        \
+          \    # 있는 줄과 없는 줄이 섞이면 Java 의 선택 구간 [] 을 쓴다\n            pat += (\"[%s]\"\
+          \ % frac) if 0 in fracs else frac\n\n        has_off = offs and offs !=\
+          \ {\"none\"}\n        if has_off:\n            kind = [o for o in offs if\
+          \ o != \"none\"][0]\n            jo = OFFSET_JAVA[kind]\n            pat\
+          \ += (\"[%s]\" % jo) if \"none\" in offs else jo\n\n        jtype = \"OffsetDateTime\"\
+          \ if has_off else \"LocalDateTime\"\n        snippet = \"%s.parse(v, TS)\"\
+          \ % jtype\n        note = None\n        if has_off and \"none\" in offs:\n\
+          \            jtype = \"TemporalAccessor\"\n            snippet = (\"TS.parseBest(v,\
+          \ OffsetDateTime::from, \"\n                       \"LocalDateTime::from)\"\
+          )\n            note = \"오프셋이 있는 줄과 없는 줄이 섞여 parseBest 가 필요합니다\"\n      \
+          \  sp_variants = []\n        for fr in sorted(fracs):\n            for ok_kind\
+          \ in sorted(offs):\n                sp = \"%Y\" + d + \"%m\" + d + \"%d\"\
+          \ + t + \"%H:%M:%S\"\n                if fr:\n                    sp +=\
+          \ fs + \"%f\"\n                if ok_kind != \"none\":\n               \
+          \     sp += \"%z\"\n                if sp not in sp_variants:\n        \
+          \            sp_variants.append(sp)\n\n        return {\"kind\": name, \"\
+          sample\": ex[0], \"java_pattern\": pat,\n                \"java_type\":\
+          \ jtype, \"strptime\": sp_variants[0],\n                \"strptime_variants\"\
+          : sp_variants,\n                \"has_offset\": bool(has_off),\n       \
+          \         \"fraction_digits\": max(fracs) if fracs else 0,\n           \
+          \     \"parse_snippet\": snippet, \"note\": note}\n\n    # ISO 계열이 아니면 이름별\
+          \ 고정 포맷\n    FIXED = {\n        \"clf\": (\"dd/MMM/yyyy:HH:mm:ss Z\", \"\
+          OffsetDateTime\",\n                \"MMM 파싱에는 Locale.ENGLISH 가 반드시 필요합니다\"\
+          ),\n        \"us_mdy\": (\"MM/dd/yyyy hh:mm:ss a\", \"LocalDateTime\",\n\
+          \                   \"오전/오후 표기가 없으면 HH:mm:ss 로 바꾸세요\"),\n        \"compact\"\
+          : (\"yyyyMMdd HHmmss\", \"LocalDateTime\", None),\n        \"syslog_bsd\"\
+          : (\"MMM ppd HH:mm:ss\", \"MonthDay\",\n                       \"연도가 없습니다\
+          \ — withYear() 로 주입해야 합니다\"),\n        \"time_only\": (\"HH:mm:ss\", \"\
+          LocalTime\", \"날짜 정보가 없습니다\"),\n        \"dmy_dash\": (\"dd-MMM-yyyy HH:mm:ss.SSS\"\
+          , \"LocalDateTime\",\n                     \"MMM 파싱에는 Locale.ENGLISH 가 반드시\
+          \ 필요합니다\"),\n    }\n    if name in FIXED:\n        pat, jt, note = FIXED[name]\n\
+          \        sp = java_to_strptime(pat)\n        return {\"kind\": name, \"\
+          sample\": ex[0], \"java_pattern\": pat,\n                \"java_type\":\
+          \ jt, \"strptime\": sp,\n                \"strptime_variants\": [sp],\n\
+          \                \"has_offset\": name == \"clf\",\n                \"fraction_digits\"\
+          : 0,\n                \"parse_snippet\": \"%s.parse(v, TS)\" % jt, \"note\"\
+          : note}\n    return None\n\n\ndef java_to_strptime(jp):\n    out = jp\n\
+          \    for a, b in [(\"yyyy\", \"%Y\"), (\"MMM\", \"%b\"), (\"MM\", \"%m\"\
+          ), (\"dd\", \"%d\"),\n                 (\"HH\", \"%H\"), (\"hh\", \"%I\"\
+          ), (\"mm\", \"%M\"), (\"ss\", \"%S\"),\n                 (\"SSSSSS\", \"\
+          %f\"), (\"SSS\", \"%f\"), (\"XXX\", \"%z\"),\n                 (\"'T'\"\
+          , \"T\"), (\"a\", \"%p\")]:\n        out = out.replace(a, b)\n    return\
+          \ out.replace(\"[\", \"\").replace(\"]\", \"\").replace(\"Z\", \"%z\")\n\
+          \n\ndef main(spec_json: str, report: str) -> dict:\n    data = json.loads(spec_json)\n\
+          \    if \"error\" in data:\n        return {\"report\": report, \"java_code\"\
+          : \"\", \"format_notation\": \"\",\n                \"java_spec_json\":\
+          \ spec_json}\n\n    ts = data.get(\"timestamp\", {}) or {}\n    notation\
+          \ = [\"## 로그 포맷 표기\", \"\"]\n\n    for s in data[\"specs\"]:\n        #\
+          \ 자바 그룹명 매핑 + 변환된 정규식\n        used, gmap = set(), {}\n        for f in\
+          \ s[\"fields\"]:\n            gmap[f[\"name\"]] = java_gname(f[\"name\"\
+          ], used)\n        s[\"java_group_names\"] = gmap\n        conv = {}\n  \
+          \      for p in ([v[\"regex\"] for v in s.get(\"variants\", [])] +\n   \
+          \               [s.get(\"regex\"), s.get(\"unified_regex\")]):\n       \
+          \     if p:\n                conv[p] = to_java_regex(p, gmap)\n        s[\"\
+          _java\"] = conv\n        s[\"java_regex\"] = [conv[v[\"regex\"]] for v in\
+          \ s.get(\"variants\", [])] or \\\n                          ([conv[s[\"\
+          regex\"]]] if s.get(\"regex\") else [])\n\n        if s.get(\"is_fallback\"\
+          ):\n            continue\n\n        notation.append(\"\")\n        notation.append(\"\
+          ### 그룹 %d — %s\" % (s[\"group_id\"], s.get(\"format_name\", \"custom\")))\n\
+          \n        lb = logback_pattern(s, ts)\n        if lb:\n            notation.append(\"\
+          \")\n            notation.append(\"**logback / log4j2 conversion pattern**\
+          \ (역추정)\")\n            notation.append(\"\")\n            notation.append(\"\
+          ```\")\n            notation.append(lb)\n            notation.append(\"\
+          ```\")\n\n        gk = grok_pattern(s, ts)\n        if gk:\n           \
+          \ notation.append(\"\")\n            notation.append(\"**Grok** (Logstash\
+          \ / Elastic)\")\n            notation.append(\"\")\n            notation.append(\"\
+          ```\")\n            notation.append(gk)\n            notation.append(\"\
+          ```\")\n\n        ng = nginx_log_format(s)\n        if ng:\n           \
+          \ notation.append(\"\")\n            notation.append(\"**nginx log_format**\"\
+          )\n            notation.append(\"\")\n            notation.append(\"```\"\
+          )\n            notation.append(ng)\n            notation.append(\"```\"\
+          )\n\n        if s.get(\"parser\") == \"json\":\n            notation.append(\"\
+          \")\n            notation.append(\"**JSON Pointer** (Jackson `at()` 용)\"\
+          )\n            notation.append(\"\")\n            notation.append(\"| 자바\
+          \ 필드 | JSON Pointer |\")\n            notation.append(\"|---|---|\")\n \
+          \           for f in s[\"fields\"]:\n                jp = \"/\" + (f.get(\"\
+          json_path\", f[\"name\"]).replace(\".\", \"/\"))\n                notation.append(\"\
+          | `%s` | `%s` |\" % (gmap[f[\"name\"]], jp))\n\n        if s.get(\"java_regex\"\
+          ):\n            notation.append(\"\")\n            notation.append(\"**Java\
+          \ 정규식** (그룹명이 camelCase 로 변환됨)\")\n            notation.append(\"\")\n \
+          \           for i, jr in enumerate(s[\"java_regex\"], 1):\n            \
+          \    notation.append(\"변형 %d\" % i)\n                notation.append(\"\
+          ```java\")\n                notation.append('Pattern.compile(\"%s\", Pattern.DOTALL)'\
+          \ % java_literal(jr))\n                notation.append(\"```\")\n\n    \
+          \    renamed = [(k, v) for k, v in gmap.items() if k != v]\n        if renamed:\n\
+          \            notation.append(\"\")\n            notation.append(\"필드명 변환\
+          \ (자바 그룹명은 밑줄 불가)\")\n            notation.append(\"\")\n            notation.append(\"\
+          | 원본 | 자바 |\")\n            notation.append(\"|---|---|\")\n           \
+          \ for k, v in renamed:\n                notation.append(\"| `%s` | `%s`\
+          \ |\" % (k, v))\n\n    # 시간 파싱 안내 — 실제 관측값에서 도출\n    ts_samples = []\n \
+          \   for s in data[\"specs\"]:\n        if s.get(\"is_fallback\"):\n    \
+          \        continue\n        for f in s[\"fields\"]:\n            if f.get(\"\
+          role\") == \"timestamp\":\n                ts_samples.extend([str(x) for\
+          \ x in f.get(\"examples\", [])])\n    dt = analyze_ts_samples(ts.get(\"\
+          name\", \"\"), ts_samples)\n    if dt is None and ts.get(\"regex\"):\n \
+          \       # 필드로 잡히지 않은 경우 원문 예시에서 직접 긁는다\n        rx = re.compile(ts[\"regex\"\
+          ])\n        scraped = []\n        for s in data[\"specs\"]:\n          \
+          \  for e in s.get(\"examples\", []):\n                m = rx.search(e)\n\
+          \                if m:\n                    scraped.append(m.group(0))\n\
+          \        dt = analyze_ts_samples(ts.get(\"name\", \"\"), scraped)\n    \
+          \    ts_samples = scraped or ts_samples\n\n    # --- 도출한 포맷을 실제 관측값으로 검증\
+          \ ---\n    dt_ready, dt_error = False, \"\"\n    if dt is None:\n      \
+          \  dt_error = (\"날짜시간 포맷을 도출하지 못했습니다\"\n                    if ts.get(\"\
+          name\") else \"타임스탬프가 탐지되지 않았습니다\")\n    elif dt[\"java_pattern\"].startswith(\"\
+          EPOCH_\"):\n        dt_ready = True\n        dt[\"parse_ok_rate\"] = 1.0\n\
+          \    else:\n        rate, failed = validate_strptime(\n            [s for\
+          \ s in ts_samples if s][:200],\n            dt.get(\"strptime_variants\"\
+          , []))\n        dt[\"parse_ok_rate\"] = rate\n        dt[\"failed_sample\"\
+          ] = failed\n        if rate >= 0.99:\n            dt_ready = True\n    \
+          \    else:\n            dt_error = (\"도출한 포맷이 관측값과 맞지 않습니다 \"\n        \
+          \                \"(성공률 %.0f%%, 실패 예시: %s)\" % (rate * 100, failed))\n \
+          \           warn_msg = \"날짜 포맷 검증 실패 — \" + dt_error\n            data.setdefault(\"\
+          warnings\", []).append(warn_msg)\n\n    if dt:\n        ts[\"java_pattern\"\
+          ] = dt[\"java_pattern\"]\n        ts[\"java_type\"] = dt[\"java_type\"]\n\
+          \        ts[\"java_parse_expr\"] = dt[\"parse_snippet\"]\n        ts[\"\
+          java_note\"] = dt[\"note\"]\n        ts[\"derived_from_samples\"] = True\n\
+          \        notation.append(\"\")\n        notation.append(\"### 날짜시간 포맷\"\
+          )\n        notation.append(\"\")\n        notation.append(\"| 항목 | 값 |\"\
+          )\n        notation.append(\"|---|---|\")\n        notation.append(\"| 관측\
+          \ 예시 | `%s` |\" % dt[\"sample\"])\n        notation.append(\"| Java 패턴 |\
+          \ `%s` |\" % dt[\"java_pattern\"])\n        notation.append(\"| Java 타입\
+          \ | `%s` |\" % dt[\"java_type\"])\n        notation.append(\"| strptime\
+          \ | `%s` |\" % dt[\"strptime\"])\n        notation.append(\"| 소수 자릿수 | %d\
+          \ |\" % dt[\"fraction_digits\"])\n        notation.append(\"| 오프셋 | %s |\"\
+          \ % (\"있음\" if dt[\"has_offset\"] else \"없음\"))\n        notation.append(\"\
+          \")\n        if dt[\"java_pattern\"].startswith(\"EPOCH_\"):\n         \
+          \   notation.append(\"```java\")\n            notation.append(dt[\"parse_snippet\"\
+          ] + \";\")\n            notation.append(\"```\")\n        else:\n      \
+          \      notation.append(\"```java\")\n            notation.append('DateTimeFormatter\
+          \ TS = DateTimeFormatter.ofPattern(')\n            notation.append('   \
+          \     \"%s\", Locale.ENGLISH);' % dt[\"java_pattern\"])\n            notation.append(\"\
+          %s %s = %s;\"\n                            % (dt[\"java_type\"], \"t\",\
+          \ dt[\"parse_snippet\"]))\n            notation.append(\"```\")\n      \
+          \  if dt[\"note\"]:\n            notation.append(\"\")\n            notation.append(\"\
+          주의: %s\" % dt[\"note\"])\n    elif ts.get(\"name\"):\n        notation.append(\"\
+          \")\n        notation.append(\"### 날짜시간 포맷\")\n        notation.append(\"\
+          \")\n        notation.append(\"관측 표본에서 포맷을 도출하지 못했습니다. \"\n            \
+          \            \"탐지된 종류: `%s`\" % ts.get(\"name\"))\n\n    java_code = build_java(data[\"\
+          specs\"], ts)\n\n    for s in data[\"specs\"]:\n        s.pop(\"_java\"\
+          , None)\n\n    return {\n        \"report\": report + \"\\n\\n\" + \"\\\
+          n\".join(notation),\n        \"format_notation\": \"\\n\".join(notation),\n\
+          \        \"java_code\": java_code,\n        \"java_spec_json\": json.dumps(data,\
+          \ ensure_ascii=False, indent=2),\n        \"datetime_format\": (dt[\"java_pattern\"\
+          ] if dt else \"\"),\n        \"datetime_java_type\": (dt[\"java_type\"]\
+          \ if dt else \"\"),\n        \"datetime_sample\": (dt[\"sample\"] if dt\
+          \ else \"\"),\n        \"datetime_is_epoch\": (\"true\" if dt and dt[\"\
+          java_pattern\"].startswith(\"EPOCH_\") else \"false\"),\n        \"datetime_zone_required\"\
+          : (\"true\" if dt and not dt.get(\"has_offset\") else \"false\"),\n    \
+          \    \"datetime_ready\": (\"true\" if dt_ready else \"false\"),\n      \
+          \  \"datetime_error\": dt_error,\n        \"datetime_json\": json.dumps(dt\
+          \ or {\"detected\": False},\n                                    ensure_ascii=False,\
+          \ indent=2),\n    }\n"
+        code_language: python3
+        desc: 자바 그룹명 규칙 변환, DateTimeFormatter 매핑, LogParser 코드 생성, logback/Grok/nginx
+          포맷 표기
+        outputs:
+          datetime_error:
+            children: null
+            type: string
+          datetime_format:
+            children: null
+            type: string
+          datetime_is_epoch:
+            children: null
+            type: string
+          datetime_java_type:
+            children: null
+            type: string
+          datetime_json:
+            children: null
+            type: string
+          datetime_ready:
+            children: null
+            type: string
+          datetime_sample:
+            children: null
+            type: string
+          datetime_zone_required:
+            children: null
+            type: string
+          format_notation:
+            children: null
+            type: string
+          java_code:
+            children: null
+            type: string
+          java_spec_json:
+            children: null
+            type: string
+          report:
+            children: null
+            type: string
+        selected: false
+        title: 4. Java 코드 / 포맷 표기 생성
+        type: code
+        variables:
+        - value_selector:
+          - '1722960000004'
+          - spec_json
+          variable: spec_json
+        - value_selector:
+          - '1722960000004'
+          - report
+          variable: report
+      height: 112
+      id: '1722960000006'
+      position:
+        x: 1296
+        y: 300
+      positionAbsolute:
+        x: 1296
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        desc: 리포트 + 포맷 표기 + Java 코드 + 기계용 스펙
+        outputs:
+        - value_selector:
+          - '1722960000006'
+          - report
+          variable: report
+        - value_selector:
+          - '1722960000006'
+          - datetime_format
+          variable: datetime_format
+        - value_selector:
+          - '1722960000006'
+          - datetime_java_type
+          variable: datetime_java_type
+        - value_selector:
+          - '1722960000006'
+          - datetime_sample
+          variable: datetime_sample
+        - value_selector:
+          - '1722960000006'
+          - datetime_is_epoch
+          variable: datetime_is_epoch
+        - value_selector:
+          - '1722960000006'
+          - datetime_zone_required
+          variable: datetime_zone_required
+        - value_selector:
+          - '1722960000006'
+          - datetime_ready
+          variable: datetime_ready
+        - value_selector:
+          - '1722960000006'
+          - datetime_error
+          variable: datetime_error
+        - value_selector:
+          - '1722960000006'
+          - datetime_json
+          variable: datetime_json
+        - value_selector:
+          - '1722960000006'
+          - format_notation
+          variable: format_notation
+        - value_selector:
+          - '1722960000006'
+          - java_code
+          variable: java_code
+        - value_selector:
+          - '1722960000006'
+          - java_spec_json
+          variable: spec_json
+        - value_selector:
+          - '1722960000004'
+          - ready
+          variable: ready_for_parsing
+        - value_selector:
+          - '1722960000004'
+          - format_summary
+          variable: format_summary
+        selected: false
+        title: 종료
+        type: end
+      height: 470
+      id: '1722960000005'
+      position:
+        x: 1600
+        y: 300
+      positionAbsolute:
+        x: 1600
+        y: 300
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    viewport:
+      x: 164.84686868392293
+      y: 149.72818560883763
+      zoom: 0.5683937124413992
+  rag_pipeline_variables: []
