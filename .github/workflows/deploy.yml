@@ -1,0 +1,58 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync files to EC2
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avzr --delete --exclude='.git' --exclude='target'
+          path: ./
+          remote_path: /home/ec2-user/project/
+          remote_host: ${{ secrets.EC2_HOST }}
+          remote_user: ${{ secrets.EC2_USER }}
+          remote_key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Build & Deploy on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ec2-user/project
+
+            # 빌드
+            mvn clean package -DskipTests
+
+            # app 폴더 준비
+            mkdir -p /home/ec2-user/app
+
+            # jar 이동
+            mv target/loganalyzer-0.0.1-SNAPSHOT.jar /home/ec2-user/app/loganalyzer.jar
+
+            # 재기동
+            sudo systemctl restart loganalyzer
+
+            echo "배포 완료"
+
+      - name: Extract test logs on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            find /home/ec2-user/project/test_logs -name "*.gz" | while read f; do
+              gunzip "$f" && echo "압축 해제 완료: $f"
+            done
+            echo "test_logs gz 처리 완료"
